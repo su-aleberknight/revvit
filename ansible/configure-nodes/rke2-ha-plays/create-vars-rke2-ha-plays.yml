@@ -18,7 +18,7 @@
       loop:
         - suseconnect.yml.example
         - configure-etc-hosts.yml.example
-        - install-lb-for-api-server-ha.yml.example
+        - install-kubevip-static-pod.yml.example
         - create-control-plane.yml.example
         - install-rke2-agent-nodes.yml.example
 

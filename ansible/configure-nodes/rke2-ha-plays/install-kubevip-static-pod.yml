@@ -7,7 +7,7 @@
 # and will start kube-vip immediately when rke2-server comes up.
 #
 # Run order:
-#   1. install-lb-for-api-server-ha.yml          <- this file
+#   1. install-kubevip-static-pod.yml          <- this file
 #   2. install-rke2-leader-node.yml
 #   3. create-control-plane.yml
 
@@ -15,7 +15,7 @@
   hosts: rke2_bootstrap:rke2-control-nodes
   gather_facts: false
   vars_files:
-    - vars/install-lb-for-api-server-ha.yml
+    - vars/install-kubevip-static-pod.yml
 
   tasks:
     - name: Validate required variables are defined
@@ -24,11 +24,11 @@
           ERROR: Missing required variables.
 
           Usage:
-            ansible-playbook install-lb-for-api-server-ha.yml [-i inventory]
+            ansible-playbook install-kubevip-static-pod.yml [-i inventory]
 
-          Required vars file (vars/install-lb-for-api-server-ha.yml):
-            cp vars/install-lb-for-api-server-ha.yml.example vars/install-lb-for-api-server-ha.yml
-            # then edit vars/install-lb-for-api-server-ha.yml
+          Required vars file (vars/install-kubevip-static-pod.yml):
+            cp vars/install-kubevip-static-pod.yml.example vars/install-kubevip-static-pod.yml
+            # then edit vars/install-kubevip-static-pod.yml
 
           Required inventory groups:
             [rke2_bootstrap]   <- node 1 only
@@ -44,7 +44,7 @@
   hosts: rke2_bootstrap:rke2-control-nodes
   become: true
   vars_files:
-    - vars/install-lb-for-api-server-ha.yml
+    - vars/install-kubevip-static-pod.yml
   vars:
     rke2_vip_ip: "{{ hostvars[groups['vip'][0]]['ansible_host'] }}"
     rke2_vip_hostname: "{{ groups['vip'][0] }}"

@@ -13,7 +13,7 @@
       register: vars_file_check
       loop:
         - suseconnect.yml
-        - install-lb-for-api-server-ha.yml
+        - install-kubevip-static-pod.yml
         - install-rke2-leader-node.yml
         - create-control-plane.yml
         - install-rke2-agent-nodes.yml
@@ -33,7 +33,7 @@
         file: "vars/{{ item }}"
       loop:
         - suseconnect.yml
-        - install-lb-for-api-server-ha.yml
+        - install-kubevip-static-pod.yml
         - install-rke2-leader-node.yml
         - create-control-plane.yml
         - install-rke2-agent-nodes.yml

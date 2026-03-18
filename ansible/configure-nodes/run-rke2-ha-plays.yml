@@ -3,7 +3,7 @@
 - import_playbook: rke2-ha-plays/preflight-check-ha.yml
 - import_playbook: rke2-ha-plays/suseconnect.yml
 - import_playbook: rke2-ha-plays/configure-etc-hosts.yml
-- import_playbook: rke2-ha-plays/install-lb-for-api-server-ha.yml
+- import_playbook: rke2-ha-plays/install-kubevip-static-pod.yml
 - import_playbook: rke2-ha-plays/install-rke2-leader-node.yml
 - import_playbook: rke2-ha-plays/create-vip-interface-env-var.yml
 - import_playbook: rke2-ha-plays/control-plane-preflight-check.yml

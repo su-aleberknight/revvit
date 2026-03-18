@@ -13,7 +13,7 @@ cluster and the sequence they must be run in.
 ```bash
 cp rke2-ha-plays/vars/suseconnect.yml.example rke2-ha-plays/vars/suseconnect.yml
 cp rke2-ha-plays/vars/configure-etc-hosts.yml.example rke2-ha-plays/vars/configure-etc-hosts.yml
-cp rke2-ha-plays/vars/install-lb-for-api-server-ha.yml.example rke2-ha-plays/vars/install-lb-for-api-server-ha.yml
+cp rke2-ha-plays/vars/install-kubevip-static-pod.yml.example rke2-ha-plays/vars/install-kubevip-static-pod.yml
 cp rke2-ha-plays/vars/install-rke2-leader-node.yml.example rke2-ha-plays/vars/install-rke2-leader-node.yml
 cp rke2-ha-plays/vars/create-control-plane.yml.example rke2-ha-plays/vars/create-control-plane.yml
 cp rke2-ha-plays/vars/install-rke2-agent-nodes.yml.example rke2-ha-plays/vars/install-rke2-agent-nodes.yml
@@ -74,7 +74,7 @@ ansible-playbook -i inventory rke2-ha-plays/configure-etc-hosts.yml
 
 ---
 
-### 3. `rke2-ha-plays/install-lb-for-api-server-ha.yml`
+### 3. `rke2-ha-plays/install-kubevip-static-pod.yml`
 **Hosts:** `rke2_bootstrap` + `rke2-control-nodes`
 
 Deploys the kube-vip static pod manifest to all server nodes **before** RKE2 starts.
@@ -83,7 +83,7 @@ Kubernetes API server. The network interface for the VIP is auto-detected per no
 
 Must run before RKE2 is started on any node.
 
-**Vars file:** `rke2-ha-plays/vars/install-lb-for-api-server-ha.yml`
+**Vars file:** `rke2-ha-plays/vars/install-kubevip-static-pod.yml`
 
 | Variable | Description |
 |----------|-------------|
@@ -92,7 +92,7 @@ Must run before RKE2 is started on any node.
 | `rke2_vip_hostname` | Hostname for the VIP |
 
 ```bash
-ansible-playbook -i inventory rke2-ha-plays/install-lb-for-api-server-ha.yml
+ansible-playbook -i inventory rke2-ha-plays/install-kubevip-static-pod.yml
 ```
 
 ---

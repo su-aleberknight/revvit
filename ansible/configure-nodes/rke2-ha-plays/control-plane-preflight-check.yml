@@ -1,6 +1,8 @@
 ---
 # Verifies the leader node is ready before attaching control plane nodes.
-# Checks that RKE2 is installed and that a token is present in its config.
+# Checks that the kube-vip static pod manifest is in place and a token exists
+# in the RKE2 config — confirming install-kubevip-static-pod.yml and
+# install-rke2-leader-node.yml have both completed successfully.
 #
 # Run this before create-control-plane.yml.
 
@@ -11,17 +13,17 @@
   any_errors_fatal: true
 
   tasks:
-    - name: Check RKE2 binary is installed
+    - name: Check kube-vip static pod manifest exists
       ansible.builtin.stat:
-        path: /usr/local/bin/rke2
-      register: rke2_binary
+        path: /var/lib/rancher/rke2/agent/pod-manifests/kube-vip.yaml
+      register: kubevip_manifest
 
-    - name: Abort if RKE2 is not installed on leader node
+    - name: Abort if kube-vip manifest is missing on leader node
       ansible.builtin.fail:
         msg: |
-          ERROR: RKE2 is not installed on {{ inventory_hostname }}.
-          Run install-rke2-leader-node.yml before running create-control-plane.yml.
-      when: not rke2_binary.stat.exists
+          ERROR: kube-vip static pod manifest not found on {{ inventory_hostname }}.
+          Run install-kubevip-static-pod.yml before running create-control-plane.yml.
+      when: not kubevip_manifest.stat.exists
 
     - name: Check RKE2 config file exists
       ansible.builtin.stat:
