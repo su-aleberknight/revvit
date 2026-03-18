@@ -1,0 +1,55 @@
+---
+# Prints all variable settings required for the rke2-ha-plays and prompts for confirmation.
+# Abort run-rke2-ha-plays.yml by answering 'no' at the prompt.
+
+- name: RKE2 HA preflight check
+  hosts: localhost
+  gather_facts: false
+  vars_files:
+    - vars/suseconnect.yml
+    - vars/install-lb-for-api-server-ha.yml
+    - vars/install-rke2-leader-node.yml
+    - vars/create-control-plane.yml
+    - vars/install-rke2-agent-nodes.yml
+    - vars/configure-etc-hosts.yml
+
+  tasks:
+    - name: Display inventory nodes
+      ansible.builtin.debug:
+        msg:
+          - "============================================"
+          - " RKE2 HA Cluster — Preflight Check"
+          - "============================================"
+          - ""
+          - "--- Inventory ---"
+          - "Bootstrap node:    {{ groups['rke2_bootstrap'] | map('extract', hostvars, 'ansible_host') | list }}"
+          - "Leader node:       {{ groups['rke2-leader-node'] | map('extract', hostvars, 'ansible_host') | list }}"
+          - "Control nodes:     {{ groups['rke2-control-nodes'] | map('extract', hostvars, 'ansible_host') | list }}"
+          - "Worker nodes:      {{ groups['rke2-worker-nodes'] | default([]) | map('extract', hostvars, 'ansible_host') | list }}"
+          - "VIP:               {{ hostvars[groups['vip'][0]]['ansible_host'] }} ({{ groups['vip'][0] }})"
+          - ""
+          - "--- SUSE Registration ---"
+          - "Email:             {{ suse_email }}"
+          - "Subscription:      {{ suse_subscription_number }}"
+          - ""
+          - "--- RKE2 ---"
+          - "Version:           {{ rke2_version }}"
+          - "Token:             {{ rke2_token }}"
+          - ""
+          - "--- kube-vip ---"
+          - "Version:           {{ kube_vip_version }}"
+          - ""
+          - "--- /etc/hosts ---"
+          - "DNS mode:          {{ dns | default(true) }}"
+          - "  (if true, /etc/hosts will not be written)"
+          - "============================================"
+
+    - name: Prompt user to confirm settings
+      ansible.builtin.pause:
+        prompt: "Are the settings above correct? [yes/no]"
+      register: user_confirmation
+
+    - name: Abort if user did not confirm
+      ansible.builtin.fail:
+        msg: "Preflight check rejected by user — aborting run-rke2-ha-plays.yml."
+      when: user_confirmation.user_input | lower != 'yes'
