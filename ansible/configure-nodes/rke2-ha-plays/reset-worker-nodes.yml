@@ -1,0 +1,31 @@
+---
+# Removes RKE2 from all worker nodes.
+# Run this to fully reset [rke2-worker-nodes] before re-running install-rke2-worker-nodes.yml.
+
+- name: Reset worker nodes
+  hosts: rke2-worker-nodes
+  become: true
+
+  tasks:
+    - name: Run RKE2 killall script
+      ansible.builtin.shell:
+        cmd: /opt/rke2/bin/rke2-killall.sh
+      args:
+        removes: /opt/rke2/bin/rke2-killall.sh
+      failed_when: false
+
+    - name: Run RKE2 uninstall script
+      ansible.builtin.shell:
+        cmd: /opt/rke2/bin/rke2-uninstall.sh
+      args:
+        removes: /opt/rke2/bin/rke2-uninstall.sh
+
+    - name: Remove RKE2 config directory
+      ansible.builtin.file:
+        path: /etc/rancher/rke2
+        state: absent
+
+    - name: Remove RKE2 data directory
+      ansible.builtin.file:
+        path: /var/lib/rancher/rke2
+        state: absent
