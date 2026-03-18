@@ -65,3 +65,34 @@
       ansible.builtin.command:
         cmd: kubectl rollout status deployment -n cert-manager --timeout=120s
       changed_when: false
+
+    - name: Wait for cert-manager webhook to be reachable
+      ansible.builtin.command:
+        cmd: kubectl wait --for=condition=Ready pod -l app=webhook -n cert-manager --timeout=120s
+      changed_when: false
+
+    - name: Pause to allow webhook certificate to become valid
+      ansible.builtin.pause:
+        seconds: 30
+
+- name: Confirm cert-manager before proceeding
+  hosts: localhost
+  gather_facts: false
+
+  tasks:
+    - name: Display cert-manager check command
+      ansible.builtin.debug:
+        msg:
+          - "Verify cert-manager is running on the cluster:"
+          - "  helm status cert-manager -n cert-manager"
+          - "  kubectl get pods -n cert-manager"
+
+    - name: Prompt user to confirm cert-manager is healthy
+      ansible.builtin.pause:
+        prompt: "Is cert-manager running correctly? [yes/no]"
+      register: cm_confirmation
+
+    - name: Abort if cert-manager not confirmed
+      ansible.builtin.fail:
+        msg: "cert-manager not confirmed — aborting. Check the pods in the cert-manager namespace before re-running."
+      when: cm_confirmation.user_input | lower != 'yes'
