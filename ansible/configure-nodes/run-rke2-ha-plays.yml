@@ -1,4 +1,5 @@
 ---
+- import_playbook: rke2-ha-plays/create-vars-rke2-ha-plays.yml
 - import_playbook: rke2-ha-plays/preflight-check.yml
 - import_playbook: rke2-ha-plays/suseconnect.yml
 - import_playbook: rke2-ha-plays/configure-etc-hosts.yml

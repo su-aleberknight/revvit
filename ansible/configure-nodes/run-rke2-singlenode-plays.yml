@@ -4,5 +4,6 @@
 #   1. rke2-singlenode-plays/suseconnect.yml          — registers SLES subscription
 #   2. rke2-singlenode-plays/install-rke2-singlenode.yml — installs RKE2 on a single node
 
+- import_playbook: rke2-singlenode-plays/create-vars-rke2-singlenode-plays.yml
 - import_playbook: rke2-singlenode-plays/suseconnect.yml
 - import_playbook: rke2-singlenode-plays/install-rke2-singlenode.yml

@@ -10,6 +10,7 @@
 #   3. gpu-node-plays/gpu-node-nvidia-user-managed-postboot.yml — installs container toolkit, configures containerd
 #   4. gpu-node-plays/generate-nvidia-gpu-operator.yml          — deploys GPU operator (driver disabled)
 
+- import_playbook: gpu-node-plays/create-vars-gpu-node-plays.yml
 - import_playbook: gpu-node-plays/gpu-node-nvidia-user-managed-preboot.yml
 - import_playbook: gpu-node-plays/gpu-node-nvidia-user-managed-postboot.yml
 - import_playbook: gpu-node-plays/generate-nvidia-gpu-operator.yml
