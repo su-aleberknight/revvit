@@ -9,4 +9,5 @@
 - import_playbook: rke2-ha-plays/create-vip-interface-env-var.yml
 - import_playbook: rke2-ha-plays/control-plane-preflight-check.yml
 - import_playbook: rke2-ha-plays/create-control-plane.yml
-- import_playbook: rke2-ha-plays/install-rke2-worker-nodes.yml
+- import_playbook: rke2-ha-plays/install-rke2-on-worker-nodes.yml
+- import_playbook: rke2-ha-plays/attach-workers.yml

@@ -16,7 +16,7 @@ cp rke2-ha-plays/vars/configure-etc-hosts.yml.example rke2-ha-plays/vars/configu
 cp rke2-ha-plays/vars/install-kubevip-static-pod.yml.example rke2-ha-plays/vars/install-kubevip-static-pod.yml
 cp rke2-ha-plays/vars/install-rke2-on-leader.yml.example rke2-ha-plays/vars/install-rke2-on-leader.yml
 cp rke2-ha-plays/vars/create-control-plane.yml.example rke2-ha-plays/vars/create-control-plane.yml
-cp rke2-ha-plays/vars/install-rke2-worker-nodes.yml.example rke2-ha-plays/vars/install-rke2-worker-nodes.yml
+cp rke2-ha-plays/vars/install-rke2-on-worker-nodes.yml.example rke2-ha-plays/vars/install-rke2-on-worker-nodes.yml
 ```
 
 ## Running the Full Installation
@@ -155,14 +155,14 @@ ansible-playbook -i inventory rke2-ha-plays/create-control-plane.yml
 
 ---
 
-### 6. `rke2-ha-plays/install-rke2-worker-nodes.yml`
+### 6. `rke2-ha-plays/install-rke2-on-worker-nodes.yml`
 **Hosts:** `rke2-worker-nodes`
 
 Joins any worker nodes defined in the `[rke2-worker-nodes]` inventory group. Worker nodes
 connect via the VIP so they remain connected even if the bootstrap node goes down.
 Exits cleanly if `rke2-worker-nodes` is empty or not defined.
 
-**Vars file:** `rke2-ha-plays/vars/install-rke2-worker-nodes.yml`
+**Vars file:** `rke2-ha-plays/vars/install-rke2-on-worker-nodes.yml`
 
 | Variable | Description |
 |----------|-------------|
@@ -170,7 +170,7 @@ Exits cleanly if `rke2-worker-nodes` is empty or not defined.
 | `rke2_vip_ip` | Virtual IP address agents use to join the cluster |
 
 ```bash
-ansible-playbook -i inventory rke2-ha-plays/install-rke2-worker-nodes.yml
+ansible-playbook -i inventory rke2-ha-plays/install-rke2-on-worker-nodes.yml
 ```
 
 ---

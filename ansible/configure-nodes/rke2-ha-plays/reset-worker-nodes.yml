@@ -1,6 +1,6 @@
 ---
 # Removes RKE2 from all worker nodes.
-# Run this to fully reset [rke2-worker-nodes] before re-running install-rke2-worker-nodes.yml.
+# Run this to fully reset [rke2-worker-nodes] before re-running install-rke2-on-worker-nodes.yml.
 
 - name: Reset worker nodes
   hosts: rke2-worker-nodes

@@ -1,10 +1,13 @@
 ---
-# Inventory group required:
-#   [rke2-worker-nodes]  - worker nodes (optional — omit group or leave empty to skip)
+# Configures and joins worker nodes to the cluster.
+# Reads the cluster token from the leader node, deploys the RKE2 config,
+# and starts the rke2-agent service.
 #
-# Agent nodes join via the VIP (load balancer) so they remain connected even if
-# the bootstrap node goes down. Run after both server playbooks have completed.
-# This play exits cleanly if the rke2-worker-nodes inventory group is empty.
+# Run install-rke2-on-worker-nodes.yml first.
+#
+# Inventory groups required:
+#   [rke2_bootstrap]    - leader node (token source)
+#   [rke2-worker-nodes] - worker nodes to attach
 
 - name: Validate variables
   hosts: rke2-worker-nodes
@@ -18,15 +21,8 @@
         msg: |
           ERROR: Missing required variables.
 
-          Usage:
-            ansible-playbook install-rke2-worker-nodes.yml [-i inventory]
-
           Required vars file (vars/install-rke2-worker-nodes.yml):
             cp vars/install-rke2-worker-nodes.yml.example vars/install-rke2-worker-nodes.yml
-            # then edit vars/install-rke2-worker-nodes.yml
-
-          Required inventory group:
-            [rke2-worker-nodes]   <- worker nodes (optional)
 
           File contents:
             rke2_version: "v1.34.3+rke2r3"
@@ -48,7 +44,7 @@
       ansible.builtin.set_fact:
         rke2_cluster_token: "{{ rke2_token_file.content | b64decode | trim }}"
 
-- name: Join worker nodes
+- name: Attach worker nodes to cluster
   hosts: rke2-worker-nodes
   become: true
   vars_files:
@@ -58,7 +54,7 @@
     rke2_vip_ip: "{{ hostvars[groups['vip'][0]]['ansible_host'] }}"
 
   tasks:
-    - name: Skip if no agents defined in inventory
+    - name: Skip if no worker nodes defined in inventory
       ansible.builtin.meta: end_play
       when: groups['rke2-worker-nodes'] | default([]) | length == 0
 
@@ -73,12 +69,6 @@
         src: ../templates/rke2-worker-config.yaml.j2
         dest: /etc/rancher/rke2/config.yaml
         mode: "0600"
-
-    - name: Install RKE2 worker
-      ansible.builtin.shell:
-        cmd: curl -sfL https://get.rke2.io | INSTALL_RKE2_TYPE=agent INSTALL_RKE2_VERSION={{ rke2_version | quote }} sh -
-      args:
-        creates: /usr/local/bin/rke2
 
     - name: Enable rke2-agent service
       ansible.builtin.systemd:
