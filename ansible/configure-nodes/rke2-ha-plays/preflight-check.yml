@@ -7,11 +7,10 @@
   gather_facts: false
 
   tasks:
-    - name: Create vars files from examples if they do not exist
-      ansible.builtin.copy:
-        src: "vars/{{ item }}.example"
-        dest: "vars/{{ item }}"
-        force: false
+    - name: Check all required vars files exist
+      ansible.builtin.stat:
+        path: "vars/{{ item }}"
+      register: vars_file_check
       loop:
         - suseconnect.yml
         - install-lb-for-api-server-ha.yml
@@ -19,6 +18,15 @@
         - create-control-plane.yml
         - install-rke2-agent-nodes.yml
         - configure-etc-hosts.yml
+
+    - name: Abort if any vars files are missing
+      ansible.builtin.fail:
+        msg: |
+          ERROR: Missing vars file: vars/{{ item.item }}
+          Run create-vars-files.yml first:
+            ansible-playbook create-vars-files.yml
+      loop: "{{ vars_file_check.results }}"
+      when: not item.stat.exists
 
     - name: Load vars files
       ansible.builtin.include_vars:

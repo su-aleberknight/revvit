@@ -1,0 +1,21 @@
+---
+# Creates all vars files required by rancher-manager-plays from their .example counterparts.
+# Existing files are never overwritten — safe to run at any time.
+#
+# Usage:
+#   ansible-playbook rancher-manager-plays/create-vars-rancher-manager-plays.yml -i inventory
+
+- name: Create rancher-manager-plays vars files
+  hosts: localhost
+  gather_facts: false
+
+  tasks:
+    - name: Create vars files from examples
+      ansible.builtin.copy:
+        src: "vars/{{ item }}"
+        dest: "vars/{{ item | regex_replace('\\.example$', '') }}"
+        force: false
+      loop:
+        - install-cert-manager.yml.example
+        - install-rancher.yml.example
+        - install-rancher-secrets.yml.example

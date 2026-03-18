@@ -10,7 +10,7 @@ by the OS or by the GPU Operator:
 
 Add your GPU nodes to the `[gpu_nodes]` inventory group before running either path.
 
-**Prerequisite:** Run `rke2-ha.yml` or `rke2-singlenode.yml` before running any GPU node plays.
+**Prerequisite:** Run `rke2-ha.yml` or `run-rke2-singlenode-plays.yml` before running any GPU node plays.
 
 ---
 

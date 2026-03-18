@@ -1,0 +1,12 @@
+---
+# Creates all vars files from their .example counterparts.
+# Existing files are never overwritten — safe to run at any time.
+#
+# Usage:
+#   ansible-playbook create-vars-files.yml
+
+- import_playbook: rke2-ha-plays/create-vars-rke2-ha-plays.yml
+- import_playbook: rke2-singlenode-plays/create-vars-rke2-singlenode-plays.yml
+- import_playbook: rancher-manager-plays/create-vars-rancher-manager-plays.yml
+- import_playbook: gpu-node-plays/create-vars-gpu-node-plays.yml
+- import_playbook: credentials/create-vars-credentials.yml

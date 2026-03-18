@@ -1,0 +1,5 @@
+---
+# VIP managed by kube-vip — added to /etc/hosts on all nodes.
+# rke2_vip_ip and rke2_vip_hostname are pulled from the [vip] inventory group.
+# Set to false to skip writing /etc/hosts entries if DNS is already resolving all hostnames.
+dns: true

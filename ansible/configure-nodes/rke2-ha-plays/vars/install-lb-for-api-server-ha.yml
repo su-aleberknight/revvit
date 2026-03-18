@@ -1,0 +1,5 @@
+---
+# kube-vip version to deploy as a static pod on all server nodes.
+kube_vip_version: "v0.8.9"
+
+# rke2_vip_ip and rke2_vip_hostname are pulled from the [vip] inventory group.

@@ -3,7 +3,7 @@
 This document describes the playbooks required to install Rancher Manager on an
 existing RKE2 cluster and the sequence they must be run in.
 
-**Prerequisite:** Run `rke2-ha.yml` or `rke2-singlenode.yml` before running any
+**Prerequisite:** Run `rke2-ha.yml` or `run-rke2-singlenode-plays.yml` before running any
 Rancher Manager plays.
 
 ## Prerequisites

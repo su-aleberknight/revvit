@@ -1,0 +1,16 @@
+---
+# RKE2 version — must match the version used on the bootstrap node.
+rke2_version: "v1.34.3+rke2r3"
+
+# Shared secret — must match the token used on the bootstrap node.
+rke2_token: "your-shared-secret-here"
+
+# Virtual IP of the kube-vip load balancer.
+# Secondary nodes join via the bootstrap node's real IP (port 9345) during install,
+# then use the VIP for all subsequent API server communication.
+# rke2_vip_ip and rke2_vip_hostname are pulled from the [vip] inventory group.
+
+# Set to false to skip the vip_interface pre-flight check.
+# By default the play aborts if vip_interface has not been set on the node
+# by create-vip-interface-env-var.yml.
+use_vip: true

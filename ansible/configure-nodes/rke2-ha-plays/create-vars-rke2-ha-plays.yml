@@ -1,0 +1,29 @@
+---
+# Creates all vars files required by rke2-ha-plays from their .example counterparts.
+# Existing files are never overwritten — safe to run at any time.
+#
+# Usage:
+#   ansible-playbook rke2-ha-plays/create-vars-rke2-ha-plays.yml -i inventory
+
+- name: Create rke2-ha-plays vars files
+  hosts: localhost
+  gather_facts: false
+
+  tasks:
+    - name: Create vars files from examples
+      ansible.builtin.copy:
+        src: "vars/{{ item }}"
+        dest: "vars/{{ item | regex_replace('\\.example$', '') }}"
+        force: false
+      loop:
+        - suseconnect.yml.example
+        - configure-etc-hosts.yml.example
+        - install-lb-for-api-server-ha.yml.example
+        - create-control-plane.yml.example
+        - install-rke2-agent-nodes.yml.example
+
+    - name: Create install-rke2-leader-node vars file
+      ansible.builtin.copy:
+        src: vars/install-rke2-bootstrap-node.yml.example
+        dest: vars/install-rke2-leader-node.yml
+        force: false
