@@ -22,12 +22,11 @@
       ansible.builtin.set_fact:
         rke2_cluster_token: "{{ rke2_token_file.content | b64decode | trim }}"
 
-    - name: Update token in RKE2 config
-      ansible.builtin.lineinfile:
+    - name: Replace token in RKE2 config
+      ansible.builtin.replace:
         path: /etc/rancher/rke2/config.yaml
-        regexp: '^token:'
-        line: "token: {{ rke2_cluster_token }}"
-        create: false
+        regexp: '^token:.*$'
+        replace: "token: {{ rke2_cluster_token }}"
 
 - name: Confirm token before proceeding
   hosts: localhost
@@ -41,7 +40,7 @@
           - "To verify on the leader node, run:"
           - "  grep '^token:' /etc/rancher/rke2/config.yaml"
 
-    - name: Prompt user to confirm token is correct
+    - name: Confirm token on leader
       ansible.builtin.pause:
         prompt: "Is the token correct? [yes/no]"
       register: token_confirmation
