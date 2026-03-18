@@ -45,15 +45,21 @@
       changed_when: "'Successfully registered' in suseconnect_register.stdout"
       when: "'Registered' not in suseconnect_status.stdout"
 
-    - name: Activate sle-module-desktop-applications (15.6)
+    - name: Activate sle-module-desktop-applications (15)
       ansible.builtin.command:
-        cmd: SUSEConnect -p sle-module-desktop-applications/15.6/x86_64
+        cmd: SUSEConnect -p sle-module-desktop-applications/15/x86_64
       register: result
       changed_when: "'Successfully registered' in result.stdout"
 
     - name: Activate sle-module-development-tools (15)
       ansible.builtin.command:
         cmd: SUSEConnect -p sle-module-development-tools/15/x86_64
+      register: result
+      changed_when: "'Successfully registered' in result.stdout"
+
+    - name: Activate sle-module-desktop-applications (15.6)
+      ansible.builtin.command:
+        cmd: SUSEConnect -p sle-module-desktop-applications/15.6/x86_64
       register: result
       changed_when: "'Successfully registered' in result.stdout"
 
