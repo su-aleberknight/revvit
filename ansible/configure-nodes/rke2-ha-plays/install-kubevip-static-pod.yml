@@ -8,7 +8,7 @@
 #
 # Run order:
 #   1. install-kubevip-static-pod.yml          <- this file
-#   2. install-rke2-leader-node.yml
+#   2. install-rke2-on-leader.yml
 #   3. create-control-plane.yml
 
 - name: Validate variables

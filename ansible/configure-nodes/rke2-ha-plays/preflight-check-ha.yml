@@ -14,7 +14,7 @@
       loop:
         - suseconnect.yml
         - install-kubevip-static-pod.yml
-        - install-rke2-leader-node.yml
+        - install-rke2-on-leader.yml
         - create-control-plane.yml
         - install-rke2-agent-nodes.yml
         - configure-etc-hosts.yml
@@ -34,7 +34,7 @@
       loop:
         - suseconnect.yml
         - install-kubevip-static-pod.yml
-        - install-rke2-leader-node.yml
+        - install-rke2-on-leader.yml
         - create-control-plane.yml
         - install-rke2-agent-nodes.yml
         - configure-etc-hosts.yml

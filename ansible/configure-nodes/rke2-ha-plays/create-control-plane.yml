@@ -2,7 +2,7 @@
 # Inventory group required:
 #   [rke2-control-nodes]  - nodes 2 and 3 only
 #
-# Run install-rke2-leader-node.yml first and wait for it to complete
+# Run install-rke2-on-leader.yml first and wait for it to complete
 # before running this playbook. Secondary servers join via the bootstrap node's
 # real IP — the VIP handles traffic once all three servers are up.
 

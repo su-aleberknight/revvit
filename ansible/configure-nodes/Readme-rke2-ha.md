@@ -14,7 +14,7 @@ cluster and the sequence they must be run in.
 cp rke2-ha-plays/vars/suseconnect.yml.example rke2-ha-plays/vars/suseconnect.yml
 cp rke2-ha-plays/vars/configure-etc-hosts.yml.example rke2-ha-plays/vars/configure-etc-hosts.yml
 cp rke2-ha-plays/vars/install-kubevip-static-pod.yml.example rke2-ha-plays/vars/install-kubevip-static-pod.yml
-cp rke2-ha-plays/vars/install-rke2-leader-node.yml.example rke2-ha-plays/vars/install-rke2-leader-node.yml
+cp rke2-ha-plays/vars/install-rke2-on-leader.yml.example rke2-ha-plays/vars/install-rke2-on-leader.yml
 cp rke2-ha-plays/vars/create-control-plane.yml.example rke2-ha-plays/vars/create-control-plane.yml
 cp rke2-ha-plays/vars/install-rke2-agent-nodes.yml.example rke2-ha-plays/vars/install-rke2-agent-nodes.yml
 ```
@@ -97,7 +97,7 @@ ansible-playbook -i inventory rke2-ha-plays/install-kubevip-static-pod.yml
 
 ---
 
-### 4. `rke2-ha-plays/install-rke2-leader-node.yml`
+### 4. `rke2-ha-plays/install-rke2-on-leader.yml`
 **Hosts:** `rke2_bootstrap` (node1 only)
 
 Bootstraps the first RKE2 server node. This node initializes the etcd cluster and
@@ -108,7 +108,7 @@ accept joins from secondary nodes.
 The `rke2_token` you define in the vars file is the shared secret all nodes use to
 authenticate — define it yourself before running any playbook.
 
-**Vars file:** `rke2-ha-plays/vars/install-rke2-leader-node.yml`
+**Vars file:** `rke2-ha-plays/vars/install-rke2-on-leader.yml`
 
 | Variable | Description |
 |----------|-------------|
@@ -118,7 +118,7 @@ authenticate — define it yourself before running any playbook.
 | `rke2_vip_hostname` | Hostname for the VIP |
 
 ```bash
-ansible-playbook -i inventory rke2-ha-plays/install-rke2-leader-node.yml
+ansible-playbook -i inventory rke2-ha-plays/install-rke2-on-leader.yml
 ```
 
 ---

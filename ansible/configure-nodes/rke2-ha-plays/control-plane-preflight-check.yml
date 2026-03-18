@@ -2,7 +2,7 @@
 # Verifies the leader node is ready before attaching control plane nodes.
 # Checks that the kube-vip static pod manifest is in place and a token exists
 # in the RKE2 config — confirming install-kubevip-static-pod.yml and
-# install-rke2-leader-node.yml have both completed successfully.
+# install-rke2-on-leader.yml have both completed successfully.
 #
 # Run this before create-control-plane.yml.
 
@@ -34,7 +34,7 @@
       ansible.builtin.fail:
         msg: |
           ERROR: /etc/rancher/rke2/config.yaml not found on {{ inventory_hostname }}.
-          Run install-rke2-leader-node.yml before running create-control-plane.yml.
+          Run install-rke2-on-leader.yml before running create-control-plane.yml.
       when: not rke2_config.stat.exists
 
     - name: Check token is set in RKE2 config

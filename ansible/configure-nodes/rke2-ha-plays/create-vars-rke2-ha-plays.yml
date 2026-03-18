@@ -22,8 +22,8 @@
         - create-control-plane.yml.example
         - install-rke2-agent-nodes.yml.example
 
-    - name: Create install-rke2-leader-node vars file
+    - name: Create install-rke2-on-leader vars file
       ansible.builtin.copy:
         src: vars/install-rke2-bootstrap-node.yml.example
-        dest: vars/install-rke2-leader-node.yml
+        dest: vars/install-rke2-on-leader.yml
         force: false
