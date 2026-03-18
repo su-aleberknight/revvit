@@ -4,14 +4,15 @@
 #
 # Call each playbook in this order:
 #   1. rancher-manager-plays/install-helm.yml            — installs Helm on the primary node
-#   2. rancher-manager-plays/install-rancher-secrets.yml — creates registry secrets for Rancher
-#   3. rancher-manager-plays/install-cert-manager.yml    — installs cert-manager (required by Rancher)
-#   4. rancher-manager-plays/install-rancher.yml         — installs Rancher Manager
+#   2. rancher-manager-plays/install-cert-manager.yml    — installs cert-manager (required by Rancher)
+#   3. rancher-manager-plays/install-rancher.yml         — installs Rancher Manager
+#   4. rancher-manager-plays/install-rancher-secrets.yml — creates registry secrets (requires cattle-system namespace)
 
 # this playbook is called by the rancher-manager.sh script 
 - import_playbook: credentials/create-vars-credentials.yml
 - import_playbook: rancher-manager-plays/create-vars-rancher-manager-plays.yml
+- import_playbook: rancher-manager-plays/secret-preflight-checks.yml
 - import_playbook: rancher-manager-plays/install-helm.yml
-- import_playbook: rancher-manager-plays/install-rancher-secrets.yml
 - import_playbook: rancher-manager-plays/install-cert-manager.yml
 - import_playbook: rancher-manager-plays/install-rancher.yml
+- import_playbook: rancher-manager-plays/install-rancher-secrets.yml
