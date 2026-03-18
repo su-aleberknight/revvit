@@ -5,10 +5,10 @@
 #
 # Run this before starting the RKE2 cluster or GPU operator.
 #
-# Target hosts: add GPU nodes to the [gpu_nodes] inventory group.
+# Target hosts: add GPU nodes to the [rke2-gpu-nodes] inventory group.
 
 - name: Install NVIDIA GPU drivers (os-mode, user-managed)
-  hosts: gpu_nodes
+  hosts: rke2-gpu-nodes
   become: true
 
   tasks:

@@ -3,11 +3,11 @@
 # Run this after gpu-node-nvidia-user-managed-preboot.yml and after the node has rebooted
 # with the NVIDIA driver loaded.
 #
-# Target hosts: add GPU nodes to the [gpu_nodes] inventory group.
-# Note: restarts rke2-server — use rke2-agent if the GPU node is an agent node.
+# Target hosts: add GPU nodes to the [rke2-gpu-nodes] inventory group.
+# Note: restarts rke2-agent on GPU worker nodes.
 
 - name: Install NVIDIA Container Toolkit and configure containerd (os-mode, user-managed)
-  hosts: gpu_nodes
+  hosts: rke2-gpu-nodes
   become: true
   vars_files:
     - vars/gpu-node-nvidia-user-managed-postboot.yml
@@ -48,7 +48,7 @@
       register: ctk_result
       changed_when: ctk_result.rc == 0
 
-    - name: Restart rke2-server to apply containerd configuration
+    - name: Restart rke2-agent to apply containerd configuration
       ansible.builtin.systemd:
-        name: rke2-server
+        name: rke2-agent
         state: restarted
