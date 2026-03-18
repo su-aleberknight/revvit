@@ -20,7 +20,7 @@
         - configure-etc-hosts.yml.example
         - install-kubevip-static-pod.yml.example
         - create-control-plane.yml.example
-        - install-rke2-agent-nodes.yml.example
+        - install-rke2-worker-nodes.yml.example
 
     - name: Create install-rke2-on-leader vars file
       ansible.builtin.copy:

@@ -16,7 +16,7 @@ cp rke2-ha-plays/vars/configure-etc-hosts.yml.example rke2-ha-plays/vars/configu
 cp rke2-ha-plays/vars/install-kubevip-static-pod.yml.example rke2-ha-plays/vars/install-kubevip-static-pod.yml
 cp rke2-ha-plays/vars/install-rke2-on-leader.yml.example rke2-ha-plays/vars/install-rke2-on-leader.yml
 cp rke2-ha-plays/vars/create-control-plane.yml.example rke2-ha-plays/vars/create-control-plane.yml
-cp rke2-ha-plays/vars/install-rke2-agent-nodes.yml.example rke2-ha-plays/vars/install-rke2-agent-nodes.yml
+cp rke2-ha-plays/vars/install-rke2-worker-nodes.yml.example rke2-ha-plays/vars/install-rke2-worker-nodes.yml
 ```
 
 ## Running the Full Installation
@@ -107,7 +107,7 @@ accept joins from secondary nodes.
 
 RKE2 auto-generates a cluster token on first start. `add-cluster-token-to-leader.yml`
 reads it back from `/var/lib/rancher/rke2/server/token` and writes it into `config.yaml`.
-Control plane and agent nodes read the token from the leader node at join time — no
+Control plane and worker nodes read the token from the leader node at join time — no
 manual token configuration required.
 
 **Vars file:** `rke2-ha-plays/vars/install-rke2-on-leader.yml`
@@ -155,14 +155,14 @@ ansible-playbook -i inventory rke2-ha-plays/create-control-plane.yml
 
 ---
 
-### 6. `rke2-ha-plays/install-rke2-agent-nodes.yml`
+### 6. `rke2-ha-plays/install-rke2-worker-nodes.yml`
 **Hosts:** `rke2-worker-nodes`
 
-Joins any agent nodes defined in the `[rke2-worker-nodes]` inventory group. Agent nodes
+Joins any worker nodes defined in the `[rke2-worker-nodes]` inventory group. Worker nodes
 connect via the VIP so they remain connected even if the bootstrap node goes down.
 Exits cleanly if `rke2-worker-nodes` is empty or not defined.
 
-**Vars file:** `rke2-ha-plays/vars/install-rke2-agent-nodes.yml`
+**Vars file:** `rke2-ha-plays/vars/install-rke2-worker-nodes.yml`
 
 | Variable | Description |
 |----------|-------------|
@@ -170,7 +170,7 @@ Exits cleanly if `rke2-worker-nodes` is empty or not defined.
 | `rke2_vip_ip` | Virtual IP address agents use to join the cluster |
 
 ```bash
-ansible-playbook -i inventory rke2-ha-plays/install-rke2-agent-nodes.yml
+ansible-playbook -i inventory rke2-ha-plays/install-rke2-worker-nodes.yml
 ```
 
 ---
@@ -181,7 +181,7 @@ ansible-playbook -i inventory rke2-ha-plays/install-rke2-agent-nodes.yml
 |-------|------|
 | `rke2_bootstrap` | Node 1 only — initializes the etcd cluster |
 | `rke2-control-nodes` | All three server nodes including node1 |
-| `rke2-worker-nodes` | Agent nodes (optional) |
+| `rke2-worker-nodes` | Worker nodes (optional) |
 
 Example inventory:
 

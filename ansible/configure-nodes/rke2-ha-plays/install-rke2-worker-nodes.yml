@@ -1,6 +1,6 @@
 ---
 # Inventory group required:
-#   [rke2-worker-nodes]  - agent nodes (optional — omit group or leave empty to skip)
+#   [rke2-worker-nodes]  - worker nodes (optional — omit group or leave empty to skip)
 #
 # Agent nodes join via the VIP (load balancer) so they remain connected even if
 # the bootstrap node goes down. Run after both server playbooks have completed.
@@ -10,7 +10,7 @@
   hosts: rke2-worker-nodes
   gather_facts: false
   vars_files:
-    - vars/install-rke2-agent-nodes.yml
+    - vars/install-rke2-worker-nodes.yml
 
   tasks:
     - name: Validate required variables are defined
@@ -19,14 +19,14 @@
           ERROR: Missing required variables.
 
           Usage:
-            ansible-playbook install-rke2-agent-nodes.yml [-i inventory]
+            ansible-playbook install-rke2-worker-nodes.yml [-i inventory]
 
-          Required vars file (vars/install-rke2-agent-nodes.yml):
-            cp vars/install-rke2-agent-nodes.yml.example vars/install-rke2-agent-nodes.yml
-            # then edit vars/install-rke2-agent-nodes.yml
+          Required vars file (vars/install-rke2-worker-nodes.yml):
+            cp vars/install-rke2-worker-nodes.yml.example vars/install-rke2-worker-nodes.yml
+            # then edit vars/install-rke2-worker-nodes.yml
 
           Required inventory group:
-            [rke2-worker-nodes]   <- agent nodes (optional)
+            [rke2-worker-nodes]   <- worker nodes (optional)
 
           File contents:
             rke2_version: "v1.34.3+rke2r3"
@@ -48,11 +48,11 @@
       ansible.builtin.set_fact:
         rke2_cluster_token: "{{ rke2_token_file.content | b64decode | trim }}"
 
-- name: Join agent nodes
+- name: Join worker nodes
   hosts: rke2-worker-nodes
   become: true
   vars_files:
-    - vars/install-rke2-agent-nodes.yml
+    - vars/install-rke2-worker-nodes.yml
   vars:
     rke2_token: "{{ hostvars[groups['rke2_bootstrap'][0]]['rke2_cluster_token'] }}"
     rke2_vip_ip: "{{ hostvars[groups['vip'][0]]['ansible_host'] }}"
@@ -68,13 +68,13 @@
         state: directory
         mode: "0700"
 
-    - name: Deploy RKE2 agent config
+    - name: Deploy RKE2 worker config
       ansible.builtin.template:
-        src: ../templates/rke2-agent-config.yaml.j2
+        src: ../templates/rke2-worker-config.yaml.j2
         dest: /etc/rancher/rke2/config.yaml
         mode: "0600"
 
-    - name: Install RKE2 agent
+    - name: Install RKE2 worker
       ansible.builtin.shell:
         cmd: curl -sfL https://get.rke2.io | INSTALL_RKE2_TYPE=agent INSTALL_RKE2_VERSION={{ rke2_version | quote }} sh -
       args:

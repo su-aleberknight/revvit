@@ -23,4 +23,4 @@
 - import_playbook: rke2-ha-plays/install-kubevip-static-pod.yml
 - import_playbook: rke2-ha-plays/install-rke2-on-leader.yml
 - import_playbook: rke2-ha-plays/create-control-plane.yml
-- import_playbook: rke2-ha-plays/install-rke2-agent-nodes.yml
+- import_playbook: rke2-ha-plays/install-rke2-worker-nodes.yml
