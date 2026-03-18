@@ -105,15 +105,16 @@ starts the Kubernetes API server. kube-vip starts alongside RKE2 and immediately
 claims the VIP. The play waits on port 9345 until the bootstrap node is ready to
 accept joins from secondary nodes.
 
-The `rke2_token` you define in the vars file is the shared secret all nodes use to
-authenticate — define it yourself before running any playbook.
+RKE2 auto-generates a cluster token on first start. `add-cluster-token-to-leader.yml`
+reads it back from `/var/lib/rancher/rke2/server/token` and writes it into `config.yaml`.
+Control plane and agent nodes read the token from the leader node at join time — no
+manual token configuration required.
 
 **Vars file:** `rke2-ha-plays/vars/install-rke2-on-leader.yml`
 
 | Variable | Description |
 |----------|-------------|
 | `rke2_version` | RKE2 version to install (e.g. `v1.34.3+rke2r3`) |
-| `rke2_token` | Shared secret for all nodes — define this yourself |
 | `rke2_vip_ip` | Virtual IP address of the kube-vip load balancer |
 | `rke2_vip_hostname` | Hostname for the VIP |
 
@@ -138,7 +139,6 @@ Must run only after step 4 completes successfully.
 | Variable | Description |
 |----------|-------------|
 | `rke2_version` | RKE2 version — must match the bootstrap node |
-| `rke2_token` | Shared secret — must match the bootstrap node |
 | `rke2_vip_ip` | Virtual IP address of the kube-vip load balancer |
 | `rke2_vip_hostname` | Hostname for the VIP |
 
@@ -160,7 +160,6 @@ Exits cleanly if `rke2-worker-nodes` is empty or not defined.
 | Variable | Description |
 |----------|-------------|
 | `rke2_version` | RKE2 version — must match the server nodes |
-| `rke2_token` | Shared secret — must match the server nodes |
 | `rke2_vip_ip` | Virtual IP address agents use to join the cluster |
 
 ```bash

@@ -59,7 +59,7 @@
           - ""
           - "--- RKE2 ---"
           - "Version:           {{ rke2_version | default('NOT SET') }}"
-          - "Token:             {{ rke2_token | default('NOT SET') }}"
+          - "Token:             read automatically from leader node at runtime"
           - ""
           - "--- kube-vip ---"
           - "Version:           {{ kube_vip_version | default('NOT SET') }}"

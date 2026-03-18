@@ -1,5 +1,7 @@
 {% set bootstrap_ip = hostvars[groups['rke2_bootstrap'][0]]['ansible_host'] %}
+{% if rke2_token is defined and rke2_token | length > 0 %}
 token: {{ rke2_token }}
+{% endif %}
 
 {% if rke2_is_bootstrap | default(false) %}
 cluster-init: true
