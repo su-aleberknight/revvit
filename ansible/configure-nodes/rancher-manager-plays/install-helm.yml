@@ -1,6 +1,6 @@
 ---
 - name: Refresh repositories and install Helm
-  hosts: all
+  hosts: rancher-manager-node
   become: true
 
   tasks:

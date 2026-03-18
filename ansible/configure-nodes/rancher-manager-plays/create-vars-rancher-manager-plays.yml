@@ -18,4 +18,3 @@
       loop:
         - install-cert-manager.yml.example
         - install-rancher.yml.example
-        - install-rancher-secrets.yml.example

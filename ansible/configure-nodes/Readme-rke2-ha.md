@@ -132,6 +132,13 @@ bootstrap node's real IP on port 9345 — not the VIP — because kube-vip on th
 nodes has not started yet at join time. Once all three nodes are up there is no
 primary/secondary distinction — all are equal server nodes.
 
+> **Why not the VIP?** The `server:` line in `config.yaml` is only used for the
+> initial join handshake. kube-vip on the joining node hasn't started yet, so
+> routing through the VIP locally is unreliable at that moment. The bootstrap
+> node's kube-vip already holds the VIP and is reachable, but using the real IP
+> avoids any timing dependency. Once the cluster is up, etcd handles all
+> inter-node communication directly — the `server:` value is no longer used.
+
 Must run only after step 4 completes successfully.
 
 **Vars file:** `rke2-ha-plays/vars/create-control-plane.yml`

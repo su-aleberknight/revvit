@@ -9,6 +9,7 @@
 #   4. rancher-manager-plays/install-rancher.yml         — installs Rancher Manager
 
 # this playbook is called by the rancher-manager.sh script 
+- import_playbook: credentials/create-vars-credentials.yml
 - import_playbook: rancher-manager-plays/create-vars-rancher-manager-plays.yml
 - import_playbook: rancher-manager-plays/install-helm.yml
 - import_playbook: rancher-manager-plays/install-rancher-secrets.yml
