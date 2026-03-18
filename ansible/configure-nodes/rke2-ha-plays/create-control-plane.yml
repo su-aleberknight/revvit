@@ -31,11 +31,23 @@
 
           File contents:
             rke2_version: "v1.34.3+rke2r3"
-            rke2_token: "your-shared-secret-here"
       run_once: true
-      when: >
-        rke2_token is not defined or rke2_token | length == 0 or
-        rke2_version is not defined or rke2_version | length == 0
+      when: rke2_version is not defined or rke2_version | length == 0
+
+- name: Read cluster token from leader node
+  hosts: rke2_bootstrap
+  become: true
+  gather_facts: false
+
+  tasks:
+    - name: Read cluster token
+      ansible.builtin.slurp:
+        src: /var/lib/rancher/rke2/server/token
+      register: rke2_token_file
+
+    - name: Set token fact
+      ansible.builtin.set_fact:
+        rke2_cluster_token: "{{ rke2_token_file.content | b64decode | trim }}"
 
 - name: Attach control plane nodes
   hosts: rke2-control-nodes
@@ -44,6 +56,7 @@
     - vars/create-control-plane.yml
   vars:
     rke2_is_bootstrap: false
+    rke2_token: "{{ hostvars[groups['rke2_bootstrap'][0]]['rke2_cluster_token'] }}"
     rke2_vip_ip: "{{ hostvars[groups['vip'][0]]['ansible_host'] }}"
     rke2_vip_hostname: "{{ groups['vip'][0] }}"
 
