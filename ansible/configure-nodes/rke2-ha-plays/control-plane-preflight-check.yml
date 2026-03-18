@@ -8,6 +8,7 @@
   hosts: rke2-leader-node
   become: true
   gather_facts: false
+  any_errors_fatal: true
 
   tasks:
     - name: Check RKE2 binary is installed
