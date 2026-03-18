@@ -22,3 +22,4 @@
           {{ hostvars[host]['ansible_host'] }}  {{ host }}
           {% endfor %}
           {{ rke2_vip_ip }}  {{ rke2_vip_hostname }}
+      when: not (dns | default(true) | bool)
