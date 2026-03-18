@@ -50,20 +50,24 @@
     rke2_vip_hostname: "{{ groups['vip'][0] }}"
 
   tasks:
-    - name: Verify eno1 interface exists on node
-      ansible.builtin.shell: |
-        ip link show eno1
-      register: eno1_check
+    - name: Detect interface name for node IP
+      ansible.builtin.shell:
+        cmd: ip -o addr show | awk '$4 ~ /^{{ ansible_host }}\// {print $2; exit}'
+      register: detected_interface
       changed_when: false
-      failed_when: eno1_check.rc != 0
 
-    - name: Set kube_vip_interface to eno1
+    - name: Abort if interface could not be detected
+      ansible.builtin.fail:
+        msg: "ERROR: Could not detect network interface for {{ ansible_host }} on {{ inventory_hostname }}."
+      when: detected_interface.stdout | length == 0
+
+    - name: Set kube_vip_interface
       ansible.builtin.set_fact:
-        kube_vip_interface: "eno1"
+        kube_vip_interface: "{{ detected_interface.stdout }}"
 
     - name: Show interface being used
       ansible.builtin.debug:
-        msg: "Binding VIP {{ rke2_vip_ip }} to interface eno1 on {{ inventory_hostname }}"
+        msg: "Binding VIP {{ rke2_vip_ip }} to interface {{ kube_vip_interface }} on {{ inventory_hostname }}"
 
     - name: Create kube-vip static pod manifests directory
       ansible.builtin.file:
