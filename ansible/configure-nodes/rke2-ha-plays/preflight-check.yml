@@ -5,16 +5,33 @@
 - name: RKE2 HA preflight check
   hosts: localhost
   gather_facts: false
-  vars_files:
-    - vars/suseconnect.yml
-    - vars/install-lb-for-api-server-ha.yml
-    - vars/install-rke2-leader-node.yml
-    - vars/create-control-plane.yml
-    - vars/install-rke2-agent-nodes.yml
-    - vars/configure-etc-hosts.yml
 
   tasks:
-    - name: Display inventory nodes
+    - name: Create vars files from examples if they do not exist
+      ansible.builtin.copy:
+        src: "vars/{{ item }}.example"
+        dest: "vars/{{ item }}"
+        force: false
+      loop:
+        - suseconnect.yml
+        - install-lb-for-api-server-ha.yml
+        - install-rke2-leader-node.yml
+        - create-control-plane.yml
+        - install-rke2-agent-nodes.yml
+        - configure-etc-hosts.yml
+
+    - name: Load vars files
+      ansible.builtin.include_vars:
+        file: "vars/{{ item }}"
+      loop:
+        - suseconnect.yml
+        - install-lb-for-api-server-ha.yml
+        - install-rke2-leader-node.yml
+        - create-control-plane.yml
+        - install-rke2-agent-nodes.yml
+        - configure-etc-hosts.yml
+
+    - name: Display settings
       ansible.builtin.debug:
         msg:
           - "============================================"
@@ -29,15 +46,15 @@
           - "VIP:               {{ hostvars[groups['vip'][0]]['ansible_host'] }} ({{ groups['vip'][0] }})"
           - ""
           - "--- SUSE Registration ---"
-          - "Email:             {{ suse_email }}"
-          - "Subscription:      {{ suse_subscription_number }}"
+          - "Email:             {{ suse_email | default('NOT SET') }}"
+          - "Subscription:      {{ suse_subscription_number | default('NOT SET') }}"
           - ""
           - "--- RKE2 ---"
-          - "Version:           {{ rke2_version }}"
-          - "Token:             {{ rke2_token }}"
+          - "Version:           {{ rke2_version | default('NOT SET') }}"
+          - "Token:             {{ rke2_token | default('NOT SET') }}"
           - ""
           - "--- kube-vip ---"
-          - "Version:           {{ kube_vip_version }}"
+          - "Version:           {{ kube_vip_version | default('NOT SET') }}"
           - ""
           - "--- /etc/hosts ---"
           - "DNS mode:          {{ dns | default(true) }}"
