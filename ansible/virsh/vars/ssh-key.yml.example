@@ -1,0 +1,7 @@
+# Password used to connect to RKE2 nodes during initial SSH key distribution.
+# Copy this file to vars/ssh-key.yml and set the root password that was
+# configured during SLES installation.
+#
+# Do NOT commit vars/ssh-key.yml to version control.
+
+node_root_password: "your-root-password"

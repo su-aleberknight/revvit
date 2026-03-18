@@ -1,0 +1,73 @@
+---
+# Generates the GPU operator HelmChart manifest for os-mode (user-managed driver)
+# and applies it to the cluster.
+#
+# Use this after gpu-node-nvidia-user-managed-preboot.yml and
+# gpu-node-nvidia-user-managed-postboot.yml have been run on the GPU nodes.
+#
+# driver.enabled: false — the NVIDIA driver is already installed on the OS.
+# The operator manages only the toolkit, device plugin, and other components.
+
+- name: Deploy GPU operator HelmChart (os-mode)
+  hosts: rke2_bootstrap
+  become: true
+  vars_files:
+    - vars/generate-nvidia-gpu-operator.yml
+  environment:
+    KUBECONFIG: /etc/rancher/rke2/rke2.yaml
+    PATH: "/var/lib/rancher/rke2/bin:{{ ansible_env.PATH }}"
+
+  pre_tasks:
+    - name: Validate required variables are defined
+      ansible.builtin.fail:
+        msg: |
+          ERROR: Missing required variables.
+
+          Usage:
+            ansible-playbook generate-nvidia-gpu-operator.yml [-i inventory]
+
+          Required vars file (vars/generate-nvidia-gpu-operator.yml):
+            cp vars/generate-nvidia-gpu-operator.yml.example vars/generate-nvidia-gpu-operator.yml
+            # then edit vars/generate-nvidia-gpu-operator.yml
+
+          File contents:
+            gpu_operator_version: "v25.3.4"
+      when: >
+        gpu_operator_version is not defined or gpu_operator_version | length == 0
+
+  tasks:
+    - name: Render GPU operator HelmChart manifest (os-mode)
+      ansible.builtin.template:
+        src: ../templates/gpu-operator-helmchart-os-mode.yaml.j2
+        dest: /tmp/gpu-operator.yaml
+        mode: "0600"
+
+    - name: Apply GPU operator HelmChart
+      ansible.builtin.command:
+        cmd: kubectl apply -f /tmp/gpu-operator.yaml
+      register: result
+      changed_when: "'configured' in result.stdout or 'created' in result.stdout"
+
+    - name: Wait for gpu-operator namespace to be created
+      ansible.builtin.command:
+        cmd: kubectl get namespace gpu-operator
+      register: ns_check
+      until: ns_check.rc == 0
+      retries: 12
+      delay: 10
+      changed_when: false
+
+    - name: Wait for GPU operator pods to be ready
+      ansible.builtin.command:
+        cmd: kubectl rollout status deployment -n gpu-operator --timeout=300s
+      changed_when: false
+
+    - name: Show GPU operator pods
+      ansible.builtin.command:
+        cmd: kubectl get pods -n gpu-operator
+      register: pods_output
+      changed_when: false
+
+    - name: Print pod summary
+      ansible.builtin.debug:
+        msg: "{{ pods_output.stdout_lines }}"

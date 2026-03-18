@@ -1,0 +1,80 @@
+---
+# Installs the NVIDIA GPU Operator using the SUSE BCI driver image (container-mode).
+# The operator manages the full driver stack — no OS-level driver installation needed.
+#
+# The SUSE BCI image (registry.suse.com/third-party/nvidia/driver) is a SUSE/NVIDIA
+# collaboration built specifically for RKE2/SLES — it handles the containerd socket
+# path and OS integration automatically.
+#
+# Prerequisites:
+#   - gpu-node-nvidia-secrets.yml must have been run with suse_appco defined
+#     so the suse-appco-secret exists in the gpu-operator namespace for image pulls
+#   - install-rancher.yml (cert-manager is required by the GPU operator)
+
+- name: Install NVIDIA GPU Operator (SUSE BCI container-mode)
+  hosts: rke2_bootstrap
+  become: true
+  vars_files:
+    - vars/gpu-node-nvidia-operator-managed.yml
+  environment:
+    KUBECONFIG: /etc/rancher/rke2/rke2.yaml
+    PATH: "/var/lib/rancher/rke2/bin:{{ ansible_env.PATH }}"
+
+  pre_tasks:
+    - name: Validate required variables are defined
+      ansible.builtin.fail:
+        msg: |
+          ERROR: Missing required variables.
+
+          Usage:
+            ansible-playbook gpu-node-nvidia-operator-managed.yml [-i inventory]
+
+          Required vars file (vars/gpu-node-nvidia-operator-managed.yml):
+            cp vars/gpu-node-nvidia-operator-managed.yml.example vars/gpu-node-nvidia-operator-managed.yml
+            # then edit vars/gpu-node-nvidia-operator-managed.yml
+
+          File contents:
+            gpu_operator_version: "v25.3.4"
+            nvidia_driver_image_version: "580.82.07-sles15.7"
+            appco_secret_name: "suse-appco-secret"
+      when: >
+        gpu_operator_version is not defined or gpu_operator_version | length == 0 or
+        nvidia_driver_image_version is not defined or nvidia_driver_image_version | length == 0 or
+        appco_secret_name is not defined or appco_secret_name | length == 0
+
+  tasks:
+    - name: Render GPU operator HelmChart manifest
+      ansible.builtin.template:
+        src: ../templates/gpu-operator-helmchart.yaml.j2
+        dest: /tmp/gpu-operator-helmchart.yaml
+        mode: "0600"
+
+    - name: Apply GPU operator HelmChart
+      ansible.builtin.command:
+        cmd: kubectl apply -f /tmp/gpu-operator-helmchart.yaml
+      register: result
+      changed_when: "'configured' in result.stdout or 'created' in result.stdout"
+
+    - name: Wait for gpu-operator namespace to be created
+      ansible.builtin.command:
+        cmd: kubectl get namespace gpu-operator
+      register: ns_check
+      until: ns_check.rc == 0
+      retries: 12
+      delay: 10
+      changed_when: false
+
+    - name: Wait for GPU operator pods to be ready
+      ansible.builtin.command:
+        cmd: kubectl rollout status deployment -n gpu-operator --timeout=300s
+      changed_when: false
+
+    - name: Show GPU operator pods
+      ansible.builtin.command:
+        cmd: kubectl get pods -n gpu-operator
+      register: pods_output
+      changed_when: false
+
+    - name: Print pod summary
+      ansible.builtin.debug:
+        msg: "{{ pods_output.stdout_lines }}"

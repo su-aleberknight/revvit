@@ -1,0 +1,390 @@
+﻿SUSE AI - Nvidia Accelerator Installation
+Nvidia GPU-Enabled RKE2 Cluster on SLES 15 SP6
+
+
+
+
+SUSE Linux Enterprise Server (SLES) 15 SP6 has already been installed on the GPU node. This guide walks through the installation of Nvidia Accelerator Components on SLES 15 SP6 running RKE2. The remaining SUSE AI Factory components build upon the completion of this guide.
+
+
+For other versions of SLES/Rancher Manager/RKE2 please refer to this support matrix.
+
+
+SUSEConnect — Register Subscriptions
+Register the node with your SUSE account and activate the required modules:
+
+
+suseconnect -e <email-associated-with-suse-account> -r <subscription-number>
+	sudo SUSEConnect -p sle-module-development-tools/15/x86_64
+	sudo SUSEConnect -p sle-module-desktop-applications/15.6/x86_64
+	sudo SUSEConnect -p sle-module-development-tools/15.6/x86_64
+	sudo SUSEConnect -p PackageHub/15.6/x86_64
+	SUSEConnect -p sle-module-containers/15.6/x86_64
+	suseconnect --status
+	
+
+Install Helm
+Helm is available from SUSE repositories via the Containers module:
+
+
+SUSEConnect -p sle-module-containers/15.6/x86_64
+	sudo zypper refresh
+	zypper install helm
+	
+
+Validate Helm Installation
+zypper info helm
+	
+
+	# Expected output:
+	Repository     : SLE-Module-Containers15-SP6-Updates
+	Name           : helm
+	Version        : 3.19.1-150000.1.57.1
+	Arch           : x86_64
+	Vendor         : SUSE LLC <https://www.suse.com/>
+	Installed      : Yes
+	Status         : up-to-date
+	
+
+Install Rancher Prime
+Compatibility matrix for this guide:
+
+
+Component
+	Supported Versions
+	Rancher Manager
+	2.13.2 or newer
+	RKE2
+	v1.32.x – v1.34.x
+	OS
+	SLES 15 SP6, SP7, or SLES 16
+	Longhorn
+	v1.10.x (SLES 15 SP6 / SP7)
+	
+
+Install RKE2
+First, list available RKE2 versions:
+
+
+zypper install jq
+	curl -s https://api.github.com/repos/rancher/rke2/releases | jq '.[].tag_name'
+	
+
+Install the desired version (any v1.32.x through v1.34.x is supported):
+
+
+curl -sfL https://get.rke2.io | INSTALL_RKE2_VERSION=v1.34.3+rke2r3 sh -
+	sudo systemctl enable rke2-server.service
+	sudo systemctl start rke2-server.service
+	
+
+Configure RKE2
+cp /etc/rancher/rke2/rke2.yaml ~/.kube/config
+	
+
+Note: Edit ~/.kube/config and change the server address from https://127.0.0.1:6443 to https://<ip-of-host>:6443
+
+
+Install Cert-Manager v1.14.5
+helm repo add jetstack https://charts.jetstack.io
+	helm repo update
+	kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.14.5/cert-manager.crds.yaml
+	helm install cert-manager jetstack/cert-manager \
+	  --namespace cert-manager \
+	  --create-namespace \
+	  --version v1.14.5
+	
+
+Validate the installation:
+
+
+kubectl get pods -n cert-manager
+	
+
+	# Expected output:
+	NAME                                       READY   STATUS    RESTARTS   AGE
+	cert-manager-559947dc85-plxgp              1/1     Running   0          33s
+	cert-manager-cainjector-5dfbc986b9-z2djn   1/1     Running   0          33s
+	cert-manager-webhook-66c589dcf-tj52f       1/1     Running   0          33s
+	Install Rancher Manager 2.13.2
+helm repo add rancher-stable https://releases.rancher.com/server-charts/stable
+	helm repo update
+	kubectl create namespace cattle-system
+	helm install rancher rancher-stable/rancher \
+	  --namespace cattle-system \
+	  --version 2.13.2 \
+	  --set hostname=<your hostname>.local \
+	  --set bootstrapPassword="admin"
+	
+
+
+
+Validate Rancher Manager
+In a browser, navigate to https://<your hostname>.local:6443 to confirm Rancher Manager is running. 
+
+
+Rancher Manager is installed in the cattle-system namespace.  
+
+
+The following command:
+
+
+kubectl get pods -n cattle-system
+ 
+
+
+should show the following pods:
+
+
+ 
+	 
+	   
+	   
+	   
+	   
+	
+
+
+
+
+
+For HA, three nodes are required.  Rancher Manager’s helm chart defines anti-affinity rules to ensure that replicas do not run on the same node.
+
+
+<todo: show a segment of the helm chart>
+NVIDIA AI Enterprise (Pre-Installed)
+You must manually pre-install the NVIDIA drivers and container toolkit on each worker node that has an NVIDIA GPU. These steps assume SLES 15 SP6 (adjust repository paths for a different SP or openSUSE variant). Perform these steps as root.
+
+
+Install NVIDIA GPU Drivers
+Add the NVIDIA CUDA repository (x86_64):
+
+
+# For x86_64:
+	zypper ar https://developer.download.nvidia.com/compute/cuda/repos/sles15/x86_64/ cuda-sle15
+	
+
+	# For Arm64 (AArch64):
+	# zypper ar https://developer.download.nvidia.com/compute/cuda/repos/sles15/sbsa/ cuda-sle15
+	
+
+Refresh repositories and install the signed open driver:
+
+
+zypper --gpg-auto-import-keys refresh
+	zypper install -y --auto-agree-with-licenses nv-prefer-signed-open-driver
+	# (For 64KB page size kernel, use: nvidia-open-driver-G06-signed-kmp-64kb)
+	
+
+Detect the driver version and install NVIDIA utilities:
+
+
+version=$(rpm -qa --queryformat '%{VERSION}\n' nv-prefer-signed-open-driver | cut -d '_' -f1 | sort -u | tail -n 1)
+	zypper install -y --auto-agree-with-licenses \
+	  nvidia-compute-utils-G06=${version} \
+	  nvidia-persistenced=${version}
+	
+
+Reboot and verify:
+
+
+reboot
+	
+
+	# After reboot:
+	nvidia-smi
+	
+
+Note: This installs the G06 driver branch, suitable for modern NVIDIA GPUs (Ampere or later). Confirm compatibility for your GPU model via NVIDIA's support matrix. If nvidia-smi fails after reboot, check kernel module loading with: lsmod | grep nvidia
+
+
+Install and Configure NVIDIA Container Toolkit
+The toolkit enables containers and Kubernetes pods to access the GPU. These steps assume containerd as the runtime.
+
+
+export NVIDIA_CONTAINER_TOOLKIT_VERSION=1.18.2-1
+	
+
+	sudo zypper --gpg-auto-import-keys install -y \
+	  nvidia-container-toolkit-${NVIDIA_CONTAINER_TOOLKIT_VERSION} \
+	  nvidia-container-toolkit-base-${NVIDIA_CONTAINER_TOOLKIT_VERSION} \
+	  libnvidia-container-tools-${NVIDIA_CONTAINER_TOOLKIT_VERSION} \
+	  libnvidia-container1-${NVIDIA_CONTAINER_TOOLKIT_VERSION}
+	
+
+Configure the runtime and restart containerd:
+
+
+nvidia-ctk runtime configure --runtime=containerd
+	systemctl restart rke2-server
+	
+
+Enable GPU Discovery on RKE2
+With the OS prepared, enable GPU discovery in Kubernetes. 
+NVIDIA GPU Operator (driver: enabled: false)
+Install the GPU Operator with driver and toolkit deployment disabled, since they are pre-installed:
+
+
+Create gpu-operator.yaml:
+
+
+apiVersion: helm.cattle.io/v1
+	kind: HelmChart
+	metadata:
+	  name: gpu-operator
+	  namespace: kube-system
+	spec:
+	  repo: https://helm.ngc.nvidia.com/nvidia
+	  chart: gpu-operator
+	  version: v25.3.4
+	  targetNamespace: gpu-operator
+	  createNamespace: true
+	  valuesContent: |-
+	    driver:
+	      enabled: false
+	    toolkit:
+	      env:
+	        - name: CONTAINERD_SOCKET
+	          value: /run/rke2/containerd/containerd.sock
+	        - name: ACCEPT_NVIDIA_VISIBLE_DEVICES_ENVVAR_WHEN_UNPRIVILEGED
+	          value: "false"
+	        - name: ACCEPT_NVIDIA_VISIBLE_DEVICES_AS_VOLUME_MOUNTS
+	          value: "true"
+	    devicePlugin:
+	      env:
+	        - name: DEVICE_LIST_STRATEGY
+	          value: volume-mounts
+	
+
+Apply the configuration:
+
+
+kubectl apply -f gpu-operator.yaml
+	
+
+Validate CUDA + GPU Operator Installation
+Run a benchmark pod to verify the GPU resource can be scheduled and detected correctly:
+
+
+Create nbody-benchmark.yaml:
+
+
+apiVersion: v1
+	kind: Pod
+	metadata:
+	  name: nbody-gpu-benchmark
+	  namespace: default
+	spec:
+	  restartPolicy: OnFailure
+	  runtimeClassName: nvidia
+	  containers:
+	    - name: cuda-container
+	      image: nvcr.io/nvidia/k8s/cuda-sample:nbody
+	      args: ["nbody", "-gpu", "-benchmark"]
+	      resources:
+	        limits:
+	          nvidia.com/gpu: 1
+	
+
+Apply and monitor the pod:
+
+
+kubectl apply -f nbody-benchmark.yaml
+	
+
+	# 1. Get pod status:
+	kubectl get pod nbody-gpu-benchmark
+	
+
+	# 2. If not Running/Completed, inspect:
+	kubectl describe pod nbody-gpu-benchmark
+	
+
+	# 3. If Running/Completed, view logs:
+	kubectl logs nbody-gpu-benchmark
+	
+
+
+
+NVIDIA AI Enterprise (Operator Managed)
+The managed gpu operator is currently in tech preview.  
+
+
+When the GPU Operator can be configured with “driver enabled” the GPU Operator manages the full driver stack for you — including the proprietary driver installation.  Using this approach you do not need to install anything on the OS. 
+The workflow when driver enabled = true is:
+* Install the GPU Operator with driver enabled
+* The operator deploys the proprietary driver as a container onto the node automatically
+* It also handles the components that need to be installed on the OS, namely the container toolkit, device plugin, DCGM, etc.
+Use the same helm chart as in the Pre-installed section substituting the following values:
+
+
+driver:
+  enabled: true        # Operator installs the driver
+toolkit:
+  enabled: true        # Operator configures the toolkit
+
+
+
+Note that in each case, pre-installed and operator managed results in identical components from Nvidia installed on rke2 and on the OS.
+
+
+The SUSE base container image (BCI) titled SLE BCI NVIDIA Driver is a collaboration between SUSE and Nvidia for the Nvidia managed operator supported by Nvidia for RKE2/SLES environments.  This BCI can be found in the SUSE Registry.
+
+
+
+
+SUSE Registry
+
+
+Use your SCC user information and registration code to login to registry.suse.com
+
+
+
+
+podman login -u <user-email> -p <registration-code> registry.suse.com
+
+
+
+Pull the gpu-operator BCI image
+
+
+
+
+podman pull registry.suse.com/third-party/nvidia/driver:580.82.07-sles15.7
+
+Note the BCI image is available for SLES15.7
+
+
+
+
+SUSE Application Collections
+
+
+Create a json file to hold your appco credentials:
+
+
+
+
+cat > suse-registry-secret.json <<EOF 
+{ 
+  "auths": { 
+      "registry.suse.com": { 
+      "username": "YOUR_SCC_USERNAME", 
+      "password": "YOUR_SCC_PASSWORD", 
+      "auth": "$(echo -n 'YOUR_SCC_USERNAME:YOUR_SCC_PASSWORD' | base64)" } 
+       } 
+  } 
+  EOF
+
+
+
+Create the secret file:
+
+
+
+
+kubectl create secret generic appco-secret \
+  --from-file=.dockerconfigjson=appco-secret.json \
+  --type=kubernetes.io/dockerconfigjson \
+  --namespace x
+

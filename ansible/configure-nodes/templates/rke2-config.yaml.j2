@@ -1,0 +1,16 @@
+{% set bootstrap_ip = hostvars[groups['rke2_bootstrap'][0]]['ansible_host'] %}
+token: {{ rke2_token }}
+
+{% if rke2_is_bootstrap | default(false) %}
+cluster-init: true
+{% else %}
+# Join via the bootstrap node's real IP — not the VIP — because kube-vip on this
+# node has not started yet and the VIP may not be reachable at join time.
+server: https://{{ bootstrap_ip }}:9345
+{% endif %}
+
+tls-san:
+  - {{ rke2_vip_ip }}
+{% for host in groups['rke2_servers'] | unique %}
+  - {{ hostvars[host]['ansible_host'] }}
+{% endfor %}

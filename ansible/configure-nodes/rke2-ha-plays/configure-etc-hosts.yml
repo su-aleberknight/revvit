@@ -1,0 +1,34 @@
+---
+# Writes RKE2 cluster host entries into /etc/hosts on all targeted nodes.
+# Node IPs and hostnames are derived directly from the inventory file.
+# Only the VIP (kube-vip) needs to be defined in vars/install-rke2-ha.yml.
+
+- name: Configure /etc/hosts with RKE2 cluster entries
+  hosts: all
+  become: true
+  vars_files:
+    - vars/configure-etc-hosts.yml
+
+  pre_tasks:
+    - name: Validate required variables are defined
+      ansible.builtin.fail:
+        msg: |
+          ERROR: Missing required variables.
+
+          Required vars file (vars/configure-etc-hosts.yml):
+            cp vars/configure-etc-hosts.yml.example vars/configure-etc-hosts.yml
+
+          'rke2_vip_ip' and 'rke2_vip_hostname' must be defined.
+      run_once: true
+      when: rke2_vip_ip is not defined or rke2_vip_hostname is not defined
+
+  tasks:
+    - name: Write RKE2 cluster entries to /etc/hosts
+      ansible.builtin.blockinfile:
+        path: /etc/hosts
+        marker: "# {mark} RKE2 CLUSTER"
+        block: |
+          {% for host in groups['rke2_servers'] | unique %}
+          {{ hostvars[host]['ansible_host'] }}  {{ host }}
+          {% endfor %}
+          {{ rke2_vip_ip }}  {{ rke2_vip_hostname }}

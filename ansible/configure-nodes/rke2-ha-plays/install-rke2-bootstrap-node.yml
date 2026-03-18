@@ -1,0 +1,89 @@
+---
+# Inventory group required:
+#   [rke2_bootstrap]  - node 1 only — initialises the etcd cluster and acts as the
+#                       temporary leader until kube-vip starts and claims the VIP.
+#                       After the cluster is up the VIP takes over and this node is
+#                       just another server — there is no permanent leader in the final state.
+#
+# Run this playbook first. Once it completes, run install-rke2-server-nodes.yml.
+
+- name: Validate variables
+  hosts: rke2_bootstrap
+  gather_facts: false
+  vars_files:
+    - vars/install-rke2-bootstrap-node.yml
+
+  tasks:
+    - name: Validate required variables are defined
+      ansible.builtin.fail:
+        msg: |
+          ERROR: Missing required variables.
+
+          Usage:
+            ansible-playbook install-rke2-bootstrap-node.yml [-i inventory]
+
+          Required vars file (vars/install-rke2-bootstrap-node.yml):
+            cp vars/install-rke2-bootstrap-node.yml.example vars/install-rke2-bootstrap-node.yml
+            # then edit vars/install-rke2-bootstrap-node.yml
+
+          Required inventory group:
+            [rke2_bootstrap]   <- node 1 only
+
+          File contents:
+            rke2_version: "v1.34.3+rke2r3"
+            rke2_token: "your-shared-secret-here"
+            rke2_vip_ip: "192.168.1.100"
+            rke2_vip_hostname: "rke2.example.local"
+      run_once: true
+      when: >
+        rke2_token is not defined or rke2_token | length == 0 or
+        rke2_vip_ip is not defined or
+        rke2_vip_hostname is not defined or
+        rke2_version is not defined or rke2_version | length == 0
+
+# kube-vip is deployed as a static pod so it starts alongside RKE2 and immediately
+# claims the VIP. Secondary servers join via the bootstrap node's real IP (port 9345)
+# because the VIP may not be reachable until kube-vip is running.
+- name: Bootstrap node 1
+  hosts: rke2_bootstrap
+  become: true
+  vars_files:
+    - vars/install-rke2-bootstrap-node.yml
+  vars:
+    rke2_is_bootstrap: true
+
+  tasks:
+    - name: Create RKE2 config directory
+      ansible.builtin.file:
+        path: /etc/rancher/rke2
+        state: directory
+        mode: "0700"
+
+    - name: Deploy RKE2 config
+      ansible.builtin.template:
+        src: ../templates/rke2-config.yaml.j2
+        dest: /etc/rancher/rke2/config.yaml
+        mode: "0600"
+
+    - name: Install RKE2
+      ansible.builtin.shell:
+        cmd: curl -sfL https://get.rke2.io | INSTALL_RKE2_VERSION={{ rke2_version | quote }} sh -
+      args:
+        creates: /usr/local/bin/rke2
+
+    - name: Enable rke2-server service
+      ansible.builtin.systemd:
+        name: rke2-server
+        enabled: true
+
+    - name: Start rke2-server service
+      ansible.builtin.systemd:
+        name: rke2-server
+        state: started
+
+    # Wait on the bootstrap node's real IP — secondary servers join via this IP directly.
+    - name: Wait for RKE2 registration port to be ready on bootstrap node
+      ansible.builtin.wait_for:
+        host: "{{ hostvars[groups['rke2_bootstrap'][0]]['ansible_host'] }}"
+        port: 9345
+        timeout: 120

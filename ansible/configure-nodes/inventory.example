@@ -1,0 +1,31 @@
+# Ansible inventory for RKE2 HA cluster
+# Copy to 'inventory' and fill in your node IPs — these must match the IPs
+# defined in vars/install-rke2-ha.yml under rke2_hosts.
+#
+# Usage:
+#   cp inventory.example inventory
+#   ansible-playbook install-rke2-ha.yml -i inventory
+
+[rke2_bootstrap]
+node1 ansible_host=192.168.1.10
+
+[vip]
+vip 192.168.1.100
+
+[rke2_servers]
+node1 ansible_host=192.168.1.10
+node2 ansible_host=192.168.1.11
+node3 ansible_host=192.168.1.12
+
+# Agent nodes are optional — leave this group empty or remove it if not needed
+[rke2_agents]
+agent1 ansible_host=192.168.1.20
+agent2 ansible_host=192.168.1.21
+
+# GPU nodes — add any nodes that have GPUs (used by gpu-node-nvidia-* playbooks)
+[gpu_nodes]
+agent1 ansible_host=192.168.1.20
+
+[all:vars]
+ansible_user=root
+# ansible_ssh_private_key_file=~/.ssh/id_rsa

@@ -1,0 +1,79 @@
+---
+# Deploys kube-vip as a static pod on all server nodes (bootstrap + secondary).
+# kube-vip claims the VIP across all three servers, providing HA for the API server.
+#
+# Run this BEFORE starting rke2-server on any node so the manifest is in place
+# when the kubelet initialises. The kubelet watches the pod-manifests directory
+# and will start kube-vip immediately when rke2-server comes up.
+#
+# Run order:
+#   1. install-lb-for-api-server-ha.yml          <- this file
+#   2. install-rke2-bootstrap-node.yml
+#   3. install-rke2-server-nodes.yml
+
+- name: Validate variables
+  hosts: rke2_bootstrap:rke2_servers
+  gather_facts: false
+  vars_files:
+    - vars/install-lb-for-api-server-ha.yml
+
+  tasks:
+    - name: Validate required variables are defined
+      ansible.builtin.fail:
+        msg: |
+          ERROR: Missing required variables.
+
+          Usage:
+            ansible-playbook install-lb-for-api-server-ha.yml [-i inventory]
+
+          Required vars file (vars/install-lb-for-api-server-ha.yml):
+            cp vars/install-lb-for-api-server-ha.yml.example vars/install-lb-for-api-server-ha.yml
+            # then edit vars/install-lb-for-api-server-ha.yml
+
+          Required inventory groups:
+            [rke2_bootstrap]   <- node 1 only
+            [rke2_servers]     <- nodes 2 and 3 only
+
+          File contents:
+            kube_vip_version: "v0.8.9"
+            rke2_vip_ip: "192.168.1.100"
+            rke2_vip_hostname: "rke2.example.local"
+      run_once: true
+      when: >
+        kube_vip_version is not defined or kube_vip_version | length == 0 or
+        rke2_vip_ip is not defined or
+        rke2_vip_hostname is not defined
+
+- name: Deploy kube-vip on all server nodes
+  hosts: rke2_bootstrap:rke2_servers
+  become: true
+  vars_files:
+    - vars/install-lb-for-api-server-ha.yml
+
+  tasks:
+    - name: Verify eno1 interface exists on node
+      ansible.builtin.shell: |
+        ip link show eno1
+      register: eno1_check
+      changed_when: false
+      failed_when: eno1_check.rc != 0
+
+    - name: Set kube_vip_interface to eno1
+      ansible.builtin.set_fact:
+        kube_vip_interface: "eno1"
+
+    - name: Show interface being used
+      ansible.builtin.debug:
+        msg: "Binding VIP {{ rke2_vip_ip }} to interface eno1 on {{ inventory_hostname }}"
+
+    - name: Create kube-vip static pod manifests directory
+      ansible.builtin.file:
+        path: /var/lib/rancher/rke2/agent/pod-manifests
+        state: directory
+        mode: "0700"
+
+    - name: Deploy kube-vip static pod manifest
+      ansible.builtin.template:
+        src: ../templates/kube-vip-api-server-ha.yaml.j2
+        dest: /var/lib/rancher/rke2/agent/pod-manifests/kube-vip.yaml
+        mode: "0600"

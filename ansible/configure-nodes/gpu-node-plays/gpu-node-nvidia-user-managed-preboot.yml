@@ -1,0 +1,61 @@
+---
+# Installs NVIDIA GPU drivers in os-mode (user-managed) directly on GPU nodes.
+# This is the alternative to container-mode (nvidia-gpu-operator-managed-install.yml),
+# where the operator manages the driver stack inside a container.
+#
+# Run this before starting the RKE2 cluster or GPU operator.
+#
+# Target hosts: add GPU nodes to the [gpu_nodes] inventory group.
+
+- name: Install NVIDIA GPU drivers (os-mode, user-managed)
+  hosts: gpu_nodes
+  become: true
+
+  tasks:
+    - name: Add NVIDIA CUDA repository
+      ansible.builtin.command:
+        cmd: >
+          zypper ar
+          {% if ansible_architecture == 'aarch64' %}
+          https://developer.download.nvidia.com/compute/cuda/repos/sles15/sbsa/
+          {% else %}
+          https://developer.download.nvidia.com/compute/cuda/repos/sles15/x86_64/
+          {% endif %}
+          cuda-sle15
+      register: repo_result
+      failed_when: repo_result.rc != 0 and 'already exists' not in repo_result.stderr
+      changed_when: repo_result.rc == 0
+
+    - name: Refresh repositories and import GPG keys
+      ansible.builtin.command:
+        cmd: zypper --gpg-auto-import-keys refresh
+      changed_when: false
+
+    - name: Install signed open NVIDIA driver
+      ansible.builtin.command:
+        cmd: zypper install -y --auto-agree-with-licenses nv-prefer-signed-open-driver
+      register: driver_install
+      changed_when: "'Nothing to do' not in driver_install.stdout"
+
+    - name: Detect installed driver version
+      ansible.builtin.shell:
+        cmd: rpm -qa --queryformat '%{VERSION}\n' nv-prefer-signed-open-driver | cut -d '_' -f1 | sort -u | tail -n 1
+      register: driver_version
+      changed_when: false
+
+    - name: Install NVIDIA compute utilities and persistenced
+      ansible.builtin.command:
+        cmd: >
+          zypper install -y --auto-agree-with-licenses
+          nvidia-compute-utils-G06={{ driver_version.stdout }}
+          nvidia-persistenced={{ driver_version.stdout }}
+      register: utils_install
+      changed_when: "'Nothing to do' not in utils_install.stdout"
+
+    - name: Show installed driver version
+      ansible.builtin.debug:
+        msg: "NVIDIA driver version installed: {{ driver_version.stdout }}"
+
+    - name: Reboot to load the NVIDIA kernel module
+      ansible.builtin.reboot:
+        reboot_timeout: 300

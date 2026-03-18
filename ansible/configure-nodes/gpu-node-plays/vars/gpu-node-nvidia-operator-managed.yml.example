@@ -1,0 +1,11 @@
+---
+# NVIDIA GPU Operator helm chart version
+gpu_operator_version: "v25.3.4"
+
+# SUSE BCI NVIDIA driver image version (registry.suse.com/third-party/nvidia/driver)
+# Check https://registry.suse.com for the latest available tag
+nvidia_driver_image_version: "580.82.07-sles15.7"
+
+# Name of the AppCo pull secret in the gpu-operator namespace
+# Must match suse_appco.secret_name in vars/gpu-node-nvidia-secrets.yml
+appco_secret_name: "suse-appco-secret"

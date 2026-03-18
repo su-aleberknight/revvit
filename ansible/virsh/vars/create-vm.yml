@@ -1,0 +1,23 @@
+---
+# Name of the VM
+vm_name: "sles-node1"
+
+# ISO to install from
+vm_iso: "/mnt/nvme2n1/isos/Fedora-Server-dvd-x86_64-42-1.1.iso"
+
+# CPU, memory, and disk
+vm_vcpus: 20
+vm_memory_mb: 51200       # 50 GB in MB
+vm_disk_size: 100          # GB
+vm_disk_path: "/var/lib/libvirt/images"
+
+# Networking — 'default' uses the NAT network (virbr0)
+# Use a bridge name (e.g. br0) for bridged/direct network access
+vm_network: "default"
+
+# Graphics — vnc for remote console, spice for local desktop
+vm_graphics: "vnc"
+
+# OS variant — used by libvirt to apply OS-specific optimisations
+# Run 'osinfo-query os' to list available variants
+vm_os_variant: "fedora42"

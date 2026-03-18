@@ -1,0 +1,4 @@
+token: {{ rke2_token }}
+
+# Agents join via the load balancer for HA — if no LB, use bootstrap IP instead
+server: https://{{ rke2_vip_ip }}:9345

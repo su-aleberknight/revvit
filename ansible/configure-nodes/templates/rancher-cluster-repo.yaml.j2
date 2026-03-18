@@ -1,0 +1,7 @@
+apiVersion: catalog.cattle.io/v1
+kind: ClusterRepo
+metadata:
+  name: {{ repo.name }}
+spec:
+  url: {{ repo.url }}
+  secretName: {{ repo.secret_name }}

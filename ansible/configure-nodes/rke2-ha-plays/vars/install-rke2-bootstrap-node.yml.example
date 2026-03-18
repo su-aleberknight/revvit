@@ -1,0 +1,11 @@
+---
+# RKE2 version to install on the bootstrap node.
+rke2_version: "v1.34.3+rke2r3"
+
+# Shared secret used by all nodes to authenticate with each other.
+# Define this before running any playbook — RKE2 uses it as the cluster join token.
+rke2_token: "your-shared-secret-here"
+
+# Virtual IP and hostname for the kube-vip load balancer.
+rke2_vip_ip: "192.168.122.100"
+rke2_vip_hostname: "rke2.example.local"

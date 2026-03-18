@@ -1,0 +1,78 @@
+---
+- name: Register SLES with SUSEConnect and activate modules
+  hosts: all
+  become: true
+  vars_files:
+    - vars/suseconnect.yml
+
+  pre_tasks:
+    - name: Validate required variables are defined
+      ansible.builtin.fail:
+        msg: |
+          ERROR: Missing required variables.
+
+          Usage:
+            ansible-playbook suseconnect.yml [-i inventory]
+
+          Required vars file (vars/suseconnect.yml):
+            cp vars/suseconnect.yml.example vars/suseconnect.yml
+            # then edit vars/suseconnect.yml
+
+          File contents:
+            suse_email: "your-email@example.com"
+            suse_subscription_number: "YOUR-SUBSCRIPTION-NUMBER"
+
+          Both 'suse_email' and 'suse_subscription_number' must be set and non-empty.
+      when: >
+        suse_email is not defined or suse_email | length == 0 or
+        suse_subscription_number is not defined or suse_subscription_number | length == 0
+
+  tasks:
+    - name: Register node with SUSE account
+      ansible.builtin.command:
+        cmd: >
+          suseconnect
+          -e {{ suse_email | quote }}
+          -r {{ suse_subscription_number | quote }}
+      register: suseconnect_register
+      changed_when: "'Successfully registered' in suseconnect_register.stdout"
+
+    - name: Activate sle-module-development-tools (15)
+      ansible.builtin.command:
+        cmd: SUSEConnect -p sle-module-development-tools/15/x86_64
+      register: result
+      changed_when: "'Successfully registered' in result.stdout"
+
+    - name: Activate sle-module-desktop-applications (15.6)
+      ansible.builtin.command:
+        cmd: SUSEConnect -p sle-module-desktop-applications/15.6/x86_64
+      register: result
+      changed_when: "'Successfully registered' in result.stdout"
+
+    - name: Activate sle-module-development-tools (15.6)
+      ansible.builtin.command:
+        cmd: SUSEConnect -p sle-module-development-tools/15.6/x86_64
+      register: result
+      changed_when: "'Successfully registered' in result.stdout"
+
+    - name: Activate PackageHub (15.6)
+      ansible.builtin.command:
+        cmd: SUSEConnect -p PackageHub/15.6/x86_64
+      register: result
+      changed_when: "'Successfully registered' in result.stdout"
+
+    - name: Activate sle-module-containers (15.6)
+      ansible.builtin.command:
+        cmd: SUSEConnect -p sle-module-containers/15.6/x86_64
+      register: result
+      changed_when: "'Successfully registered' in result.stdout"
+
+    - name: Show registration status
+      ansible.builtin.command:
+        cmd: suseconnect --status
+      register: status_output
+      changed_when: false
+
+    - name: Print registration status
+      ansible.builtin.debug:
+        msg: "{{ status_output.stdout }}"

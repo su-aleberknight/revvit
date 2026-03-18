@@ -1,0 +1,11 @@
+---
+# Rancher Manager version to install.
+# Find releases at: https://github.com/rancher/rancher/releases
+rancher_version: "2.13.2"
+
+# Hostname used to access the Rancher UI. Must resolve to the bootstrap node IP
+# or the kube-vip VIP — add it to /etc/hosts or your DNS.
+rancher_hostname: "rke2.example.local"
+
+# Initial admin password set on first login.
+rancher_bootstrap_password: "changeme"

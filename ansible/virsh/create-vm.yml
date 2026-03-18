@@ -1,0 +1,118 @@
+---
+- name: Create SLES VMs using virt-install
+  hosts: "{{ vm_host | default('localhost') }}"
+  become: true
+  vars_files:
+    - vars/create-vm.yml
+
+  pre_tasks:
+    - name: Verify required variables are defined
+      ansible.builtin.fail:
+        msg: |
+          Missing required variables. Ensure vars/create-vm.yml is populated.
+          Required:
+            vm_disk_path: "/var/lib/libvirt/images"
+      when: vm_disk_path is not defined
+
+    - name: Check ISO exists
+      ansible.builtin.stat:
+        path: "{{ vm_iso }}"
+      register: iso_stat
+
+    - name: Fail if ISO not found
+      ansible.builtin.fail:
+        msg: "ISO not found at {{ vm_iso }}"
+      when: not iso_stat.stat.exists
+
+    - name: Gather OS facts
+      ansible.builtin.setup:
+        gather_subset:
+          - os_family
+          - distribution
+
+  tasks:
+    - name: Install libvirt, virt-install and OVMF (SUSE)
+      community.general.zypper:
+        name:
+          - libvirt
+          - virt-install
+          - qemu-kvm
+          - ovmf
+        state: present
+      when: ansible_os_family == "Suse"
+
+    - name: Install libvirt, virt-install and OVMF (Fedora/RHEL)
+      ansible.builtin.dnf:
+        name:
+          - libvirt
+          - virt-install
+          - qemu-kvm
+          - edk2-ovmf
+        state: present
+      when: ansible_os_family == "RedHat"
+
+    - name: Install libvirt, virt-install and OVMF (Debian/Ubuntu)
+      ansible.builtin.apt:
+        name:
+          - libvirt-daemon-system
+          - virtinst
+          - qemu-kvm
+          - ovmf
+        state: present
+        update_cache: true
+      when: ansible_os_family == "Debian"
+
+    - name: Ensure libvirtd is running
+      ansible.builtin.service:
+        name: libvirtd
+        state: started
+        enabled: true
+
+    - name: Check if VM already exists
+      ansible.builtin.command: virsh dominfo {{ item }}
+      register: vm_exists
+      failed_when: false
+      changed_when: false
+      loop: "{{ groups[vm_group | default('all')] | unique }}"
+
+    - name: Create disk image for each VM
+      ansible.builtin.command: >
+        qemu-img create -f qcow2
+        {{ vm_disk_path }}/{{ item.item }}.qcow2
+        {{ vm_disk_size }}G
+      args:
+        creates: "{{ vm_disk_path }}/{{ item.item }}.qcow2"
+      loop: "{{ vm_exists.results }}"
+      loop_control:
+        label: "{{ item.item }}"
+      when: item.rc != 0
+
+    - name: Create VM with virt-install
+      ansible.builtin.command: >
+        virt-install
+        --name {{ item.item }}
+        --memory {{ vm_memory_mb }}
+        --vcpus {{ vm_vcpus }}
+        --disk path={{ vm_disk_path }}/{{ item.item }}.qcow2,format=qcow2
+        --cdrom {{ vm_iso }}
+        --os-variant {{ vm_os_variant }}
+        --network network={{ vm_network }}
+        --graphics {{ vm_graphics }}
+        --noautoconsole
+      loop: "{{ vm_exists.results }}"
+      loop_control:
+        label: "{{ item.item }}"
+      when: item.rc != 0
+
+    - name: Show status of all VMs
+      ansible.builtin.command: virsh dominfo {{ item }}
+      register: vm_info
+      changed_when: false
+      loop: "{{ groups[vm_group | default('all')] | unique }}"
+
+    - name: Print VM info
+      ansible.builtin.debug:
+        msg: "{{ item.stdout_lines }}"
+      loop: "{{ vm_info.results }}"
+      loop_control:
+        label: "{{ item.item }}"

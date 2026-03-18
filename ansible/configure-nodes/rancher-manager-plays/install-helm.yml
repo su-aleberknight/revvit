@@ -1,0 +1,15 @@
+---
+- name: Refresh repositories and install Helm
+  hosts: all
+  become: true
+
+  tasks:
+    - name: Refresh zypper repositories
+      community.general.zypper_repository:
+        repo: '*'
+        runrefresh: true
+
+    - name: Install Helm
+      community.general.zypper:
+        name: helm
+        state: present

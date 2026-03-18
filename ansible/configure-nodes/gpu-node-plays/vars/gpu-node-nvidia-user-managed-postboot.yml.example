@@ -1,0 +1,4 @@
+---
+# NVIDIA Container Toolkit version to install
+# Check https://github.com/NVIDIA/nvidia-container-toolkit/releases for the latest version
+nvidia_container_toolkit_version: "1.18.2-1"

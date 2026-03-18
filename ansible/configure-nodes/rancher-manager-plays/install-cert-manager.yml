@@ -1,0 +1,67 @@
+---
+# Installs cert-manager on the bootstrap node.
+# Required by Rancher Manager for TLS certificate management.
+#
+# Requires helm to be installed first:
+#   ansible-playbook install-helm.yml -i inventory
+
+- name: Install cert-manager
+  hosts: rke2_bootstrap
+  become: true
+  vars_files:
+    - vars/install-cert-manager.yml
+  environment:
+    KUBECONFIG: /etc/rancher/rke2/rke2.yaml
+    PATH: "/var/lib/rancher/rke2/bin:{{ ansible_env.PATH }}"
+
+  pre_tasks:
+    - name: Validate required variables are defined
+      ansible.builtin.fail:
+        msg: |
+          ERROR: Missing required variables.
+
+          Usage:
+            ansible-playbook install-cert-manager.yml [-i inventory]
+
+          Required vars file (vars/install-cert-manager.yml):
+            cp vars/install-cert-manager.yml.example vars/install-cert-manager.yml
+            # then edit vars/install-cert-manager.yml
+
+          File contents:
+            cert_manager_version: "v1.14.5"
+      when: >
+        cert_manager_version is not defined or cert_manager_version | length == 0
+
+  tasks:
+    - name: Add jetstack Helm repo
+      ansible.builtin.command:
+        cmd: helm repo add jetstack https://charts.jetstack.io --force-update
+      changed_when: false
+
+    - name: Update Helm repos
+      ansible.builtin.command:
+        cmd: helm repo update
+      changed_when: false
+
+    - name: Apply cert-manager CRDs
+      ansible.builtin.command:
+        cmd: >
+          kubectl apply -f
+          https://github.com/cert-manager/cert-manager/releases/download/{{ cert_manager_version }}/cert-manager.crds.yaml
+      register: crds_result
+      changed_when: "'configured' in crds_result.stdout or 'created' in crds_result.stdout"
+
+    - name: Install cert-manager
+      ansible.builtin.command:
+        cmd: >
+          helm upgrade --install cert-manager jetstack/cert-manager
+          --namespace cert-manager
+          --create-namespace
+          --version {{ cert_manager_version | quote }}
+      register: cm_result
+      changed_when: "'has been upgraded' in cm_result.stdout or 'has been deployed' in cm_result.stdout"
+
+    - name: Wait for cert-manager pods to be ready
+      ansible.builtin.command:
+        cmd: kubectl rollout status deployment -n cert-manager --timeout=120s
+      changed_when: false

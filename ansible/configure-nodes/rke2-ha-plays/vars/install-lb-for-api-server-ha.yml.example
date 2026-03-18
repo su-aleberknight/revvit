@@ -1,0 +1,8 @@
+---
+# kube-vip version to deploy as a static pod on all server nodes.
+kube_vip_version: "v0.8.9"
+
+# Virtual IP claimed by kube-vip — must be in the same subnet as the server nodes.
+# The network interface is auto-detected per node using the VIP subnet route.
+rke2_vip_ip: "192.168.122.100"
+rke2_vip_hostname: "rke2.example.local"

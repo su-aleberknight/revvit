@@ -1,0 +1,10 @@
+---
+# RKE2 version — must match the version used on the server nodes.
+rke2_version: "v1.34.3+rke2r3"
+
+# Shared secret — must match the token used on the server nodes.
+rke2_token: "your-shared-secret-here"
+
+# Agent nodes join via the VIP so they remain connected even if
+# the bootstrap node goes down.
+rke2_vip_ip: "192.168.122.100"

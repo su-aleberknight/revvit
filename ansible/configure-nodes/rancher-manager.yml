@@ -1,0 +1,15 @@
+---
+# Orchestrates a full Rancher Manager installation on an existing RKE2 cluster.
+# Run install-rke2-ha.yml or install-rke2-singlenode-run.yml first.
+#
+# Call each playbook in this order:
+#   1. rancher-manager-plays/install-helm.yml            — installs Helm on the primary node
+#   2. rancher-manager-plays/install-rancher-secrets.yml — creates registry secrets for Rancher
+#   3. rancher-manager-plays/install-cert-manager.yml    — installs cert-manager (required by Rancher)
+#   4. rancher-manager-plays/install-rancher.yml         — installs Rancher Manager
+
+# this playbook is called by the rancher-manager.sh script 
+- import_playbook: rancher-manager-plays/install-helm.yml
+- import_playbook: rancher-manager-plays/install-rancher-secrets.yml
+- import_playbook: rancher-manager-plays/install-cert-manager.yml
+- import_playbook: rancher-manager-plays/install-rancher.yml

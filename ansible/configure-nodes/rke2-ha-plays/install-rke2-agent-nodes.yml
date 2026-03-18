@@ -1,0 +1,78 @@
+---
+# Inventory group required:
+#   [rke2_agents]  - agent nodes (optional — omit group or leave empty to skip)
+#
+# Agent nodes join via the VIP (load balancer) so they remain connected even if
+# the bootstrap node goes down. Run after both server playbooks have completed.
+# This play exits cleanly if the rke2_agents inventory group is empty.
+
+- name: Validate variables
+  hosts: rke2_agents
+  gather_facts: false
+  vars_files:
+    - vars/install-rke2-agent-nodes.yml
+
+  tasks:
+    - name: Validate required variables are defined
+      ansible.builtin.fail:
+        msg: |
+          ERROR: Missing required variables.
+
+          Usage:
+            ansible-playbook install-rke2-agent-nodes.yml [-i inventory]
+
+          Required vars file (vars/install-rke2-agent-nodes.yml):
+            cp vars/install-rke2-agent-nodes.yml.example vars/install-rke2-agent-nodes.yml
+            # then edit vars/install-rke2-agent-nodes.yml
+
+          Required inventory group:
+            [rke2_agents]   <- agent nodes (optional)
+
+          File contents:
+            rke2_version: "v1.34.3+rke2r3"
+            rke2_token: "your-shared-secret-here"
+            rke2_vip_ip: "192.168.1.100"
+      run_once: true
+      when: >
+        rke2_token is not defined or rke2_token | length == 0 or
+        rke2_vip_ip is not defined or
+        rke2_version is not defined or rke2_version | length == 0
+
+- name: Join agent nodes
+  hosts: rke2_agents
+  become: true
+  vars_files:
+    - vars/install-rke2-agent-nodes.yml
+
+  tasks:
+    - name: Skip if no agents defined in inventory
+      ansible.builtin.meta: end_play
+      when: groups['rke2_agents'] | default([]) | length == 0
+
+    - name: Create RKE2 config directory
+      ansible.builtin.file:
+        path: /etc/rancher/rke2
+        state: directory
+        mode: "0700"
+
+    - name: Deploy RKE2 agent config
+      ansible.builtin.template:
+        src: ../templates/rke2-agent-config.yaml.j2
+        dest: /etc/rancher/rke2/config.yaml
+        mode: "0600"
+
+    - name: Install RKE2 agent
+      ansible.builtin.shell:
+        cmd: curl -sfL https://get.rke2.io | INSTALL_RKE2_TYPE=agent INSTALL_RKE2_VERSION={{ rke2_version | quote }} sh -
+      args:
+        creates: /usr/local/bin/rke2
+
+    - name: Enable rke2-agent service
+      ansible.builtin.systemd:
+        name: rke2-agent
+        enabled: true
+
+    - name: Start rke2-agent service
+      ansible.builtin.systemd:
+        name: rke2-agent
+        state: started

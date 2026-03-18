@@ -1,0 +1,76 @@
+---
+# Installs Rancher Manager on the bootstrap node.
+# Requires cert-manager to be installed first:
+#   ansible-playbook install-cert-manager.yml -i inventory
+
+- name: Install Rancher Manager
+  hosts: rke2_bootstrap
+  become: true
+  vars_files:
+    - vars/install-rancher.yml
+  environment:
+    KUBECONFIG: /etc/rancher/rke2/rke2.yaml
+    PATH: "/var/lib/rancher/rke2/bin:{{ ansible_env.PATH }}"
+
+  pre_tasks:
+    - name: Validate required variables are defined
+      ansible.builtin.fail:
+        msg: |
+          ERROR: Missing required variables.
+
+          Usage:
+            ansible-playbook install-rancher.yml [-i inventory]
+
+          Required vars file (vars/install-rancher.yml):
+            cp vars/install-rancher.yml.example vars/install-rancher.yml
+            # then edit vars/install-rancher.yml
+
+          File contents:
+            rancher_version: "2.13.2"
+            rancher_hostname: "rke2.example.local"
+            rancher_bootstrap_password: "changeme"
+      when: >
+        rancher_version is not defined or rancher_version | length == 0 or
+        rancher_hostname is not defined or rancher_hostname | length == 0 or
+        rancher_bootstrap_password is not defined or rancher_bootstrap_password | length == 0
+
+  tasks:
+    - name: Add Rancher stable Helm repo
+      ansible.builtin.command:
+        cmd: helm repo add rancher-stable https://releases.rancher.com/server-charts/stable --force-update
+      changed_when: false
+
+    - name: Update Helm repos
+      ansible.builtin.command:
+        cmd: helm repo update
+      changed_when: false
+
+    - name: Create cattle-system namespace
+      ansible.builtin.command:
+        cmd: kubectl create namespace cattle-system
+      register: ns_result
+      failed_when: ns_result.rc != 0 and 'already exists' not in ns_result.stderr
+      changed_when: ns_result.rc == 0
+
+    - name: Install Rancher Manager
+      ansible.builtin.command:
+        cmd: >
+          helm upgrade --install rancher rancher-stable/rancher
+          --namespace cattle-system
+          --version {{ rancher_version | quote }}
+          --set hostname={{ rancher_hostname | quote }}
+          --set bootstrapPassword={{ rancher_bootstrap_password | quote }}
+      register: rancher_result
+      changed_when: "'has been upgraded' in rancher_result.stdout or 'has been deployed' in rancher_result.stdout"
+
+    - name: Wait for Rancher Manager pods to be ready
+      ansible.builtin.command:
+        cmd: kubectl rollout status deployment -n cattle-system --timeout=300s
+      changed_when: false
+
+    - name: Show Rancher access info
+      ansible.builtin.debug:
+        msg:
+          - "Rancher Manager is ready."
+          - "URL: https://{{ rancher_hostname }}"
+          - "Bootstrap password: {{ rancher_bootstrap_password }}"

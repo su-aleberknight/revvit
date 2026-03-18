@@ -1,0 +1,54 @@
+---
+# Installs the NVIDIA Container Toolkit and configures containerd on GPU nodes (os-mode).
+# Run this after gpu-node-nvidia-user-managed-preboot.yml and after the node has rebooted
+# with the NVIDIA driver loaded.
+#
+# Target hosts: add GPU nodes to the [gpu_nodes] inventory group.
+# Note: restarts rke2-server — use rke2-agent if the GPU node is an agent node.
+
+- name: Install NVIDIA Container Toolkit and configure containerd (os-mode, user-managed)
+  hosts: gpu_nodes
+  become: true
+  vars_files:
+    - vars/gpu-node-nvidia-user-managed-postboot.yml
+
+  pre_tasks:
+    - name: Validate required variables are defined
+      ansible.builtin.fail:
+        msg: |
+          ERROR: Missing required variables.
+
+          Usage:
+            ansible-playbook gpu-node-nvidia-user-managed-postboot.yml [-i inventory]
+
+          Required vars file (vars/gpu-node-nvidia-user-managed-postboot.yml):
+            cp vars/gpu-node-nvidia-user-managed-postboot.yml.example vars/gpu-node-nvidia-user-managed-postboot.yml
+            # then edit vars/gpu-node-nvidia-user-managed-postboot.yml
+
+          File contents:
+            nvidia_container_toolkit_version: "1.18.2-1"
+      when: >
+        nvidia_container_toolkit_version is not defined or nvidia_container_toolkit_version | length == 0
+
+  tasks:
+    - name: Install NVIDIA Container Toolkit packages
+      ansible.builtin.command:
+        cmd: >
+          zypper --gpg-auto-import-keys install -y
+          nvidia-container-toolkit-{{ nvidia_container_toolkit_version }}
+          nvidia-container-toolkit-base-{{ nvidia_container_toolkit_version }}
+          libnvidia-container-tools-{{ nvidia_container_toolkit_version }}
+          libnvidia-container1-{{ nvidia_container_toolkit_version }}
+      register: toolkit_install
+      changed_when: "'Nothing to do' not in toolkit_install.stdout"
+
+    - name: Configure containerd runtime for NVIDIA
+      ansible.builtin.command:
+        cmd: nvidia-ctk runtime configure --runtime=containerd
+      register: ctk_result
+      changed_when: ctk_result.rc == 0
+
+    - name: Restart rke2-server to apply containerd configuration
+      ansible.builtin.systemd:
+        name: rke2-server
+        state: restarted

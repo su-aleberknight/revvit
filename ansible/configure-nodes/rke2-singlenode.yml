@@ -1,0 +1,8 @@
+---
+# Orchestrates a full RKE2 single-node installation.
+# Calls each playbook in the correct order:
+#   1. rke2-singlenode-plays/suseconnect.yml          — registers SLES subscription
+#   2. rke2-singlenode-plays/install-rke2-singlenode.yml — installs RKE2 on a single node
+
+- import_playbook: rke2-singlenode-plays/suseconnect.yml
+- import_playbook: rke2-singlenode-plays/install-rke2-singlenode.yml
