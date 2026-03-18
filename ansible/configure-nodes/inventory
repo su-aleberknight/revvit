@@ -16,7 +16,7 @@ u25-26-ranch.lab.ai ansible_host=172.24.131.75  ansible_user=root
 gpu152.lab.ai   ansible_host=172.24.131.122  ansible_user=root
 gpu28.lab.ai    ansible_host=172.24.131.213  ansible_user=root
 
-[gpu_nodes]
+[rke2-gpu-nodes]
 gpu152.lab.ai   ansible_host=172.24.131.122  ansible_user=root
 gpu28.lab.ai    ansible_host=172.24.131.213  ansible_user=root
 
