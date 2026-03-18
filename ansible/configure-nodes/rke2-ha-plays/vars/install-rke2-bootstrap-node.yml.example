@@ -6,6 +6,4 @@ rke2_version: "v1.34.3+rke2r3"
 # Define this before running any playbook — RKE2 uses it as the cluster join token.
 rke2_token: "your-shared-secret-here"
 
-# Virtual IP and hostname for the kube-vip load balancer.
-rke2_vip_ip: "192.168.122.100"
-rke2_vip_hostname: "rke2.example.local"
+# rke2_vip_ip and rke2_vip_hostname are pulled from the [vip] inventory group.

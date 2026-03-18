@@ -14,8 +14,8 @@ cluster and the sequence they must be run in.
 cp rke2-ha-plays/vars/suseconnect.yml.example rke2-ha-plays/vars/suseconnect.yml
 cp rke2-ha-plays/vars/configure-etc-hosts.yml.example rke2-ha-plays/vars/configure-etc-hosts.yml
 cp rke2-ha-plays/vars/install-lb-for-api-server-ha.yml.example rke2-ha-plays/vars/install-lb-for-api-server-ha.yml
-cp rke2-ha-plays/vars/install-rke2-bootstrap-node.yml.example rke2-ha-plays/vars/install-rke2-bootstrap-node.yml
-cp rke2-ha-plays/vars/install-rke2-server-nodes.yml.example rke2-ha-plays/vars/install-rke2-server-nodes.yml
+cp rke2-ha-plays/vars/install-rke2-leader-node.yml.example rke2-ha-plays/vars/install-rke2-leader-node.yml
+cp rke2-ha-plays/vars/create-control-plane.yml.example rke2-ha-plays/vars/create-control-plane.yml
 cp rke2-ha-plays/vars/install-rke2-agent-nodes.yml.example rke2-ha-plays/vars/install-rke2-agent-nodes.yml
 ```
 
@@ -75,7 +75,7 @@ ansible-playbook -i inventory rke2-ha-plays/configure-etc-hosts.yml
 ---
 
 ### 3. `rke2-ha-plays/install-lb-for-api-server-ha.yml`
-**Hosts:** `rke2_bootstrap` + `rke2_servers`
+**Hosts:** `rke2_bootstrap` + `rke2-control-nodes`
 
 Deploys the kube-vip static pod manifest to all server nodes **before** RKE2 starts.
 kube-vip provides the virtual IP (VIP) that acts as the HA load balancer for the
@@ -97,7 +97,7 @@ ansible-playbook -i inventory rke2-ha-plays/install-lb-for-api-server-ha.yml
 
 ---
 
-### 4. `rke2-ha-plays/install-rke2-bootstrap-node.yml`
+### 4. `rke2-ha-plays/install-rke2-leader-node.yml`
 **Hosts:** `rke2_bootstrap` (node1 only)
 
 Bootstraps the first RKE2 server node. This node initializes the etcd cluster and
@@ -108,7 +108,7 @@ accept joins from secondary nodes.
 The `rke2_token` you define in the vars file is the shared secret all nodes use to
 authenticate — define it yourself before running any playbook.
 
-**Vars file:** `rke2-ha-plays/vars/install-rke2-bootstrap-node.yml`
+**Vars file:** `rke2-ha-plays/vars/install-rke2-leader-node.yml`
 
 | Variable | Description |
 |----------|-------------|
@@ -118,13 +118,13 @@ authenticate — define it yourself before running any playbook.
 | `rke2_vip_hostname` | Hostname for the VIP |
 
 ```bash
-ansible-playbook -i inventory rke2-ha-plays/install-rke2-bootstrap-node.yml
+ansible-playbook -i inventory rke2-ha-plays/install-rke2-leader-node.yml
 ```
 
 ---
 
-### 5. `rke2-ha-plays/install-rke2-server-nodes.yml`
-**Hosts:** `rke2_servers` (node2 and node3)
+### 5. `rke2-ha-plays/create-control-plane.yml`
+**Hosts:** `rke2-control-nodes` (node2 and node3)
 
 Joins node2 and node3 to the cluster as full server nodes. They connect to the
 bootstrap node's real IP on port 9345 — not the VIP — because kube-vip on those
@@ -133,7 +133,7 @@ primary/secondary distinction — all are equal server nodes.
 
 Must run only after step 4 completes successfully.
 
-**Vars file:** `rke2-ha-plays/vars/install-rke2-server-nodes.yml`
+**Vars file:** `rke2-ha-plays/vars/create-control-plane.yml`
 
 | Variable | Description |
 |----------|-------------|
@@ -143,17 +143,17 @@ Must run only after step 4 completes successfully.
 | `rke2_vip_hostname` | Hostname for the VIP |
 
 ```bash
-ansible-playbook -i inventory rke2-ha-plays/install-rke2-server-nodes.yml
+ansible-playbook -i inventory rke2-ha-plays/create-control-plane.yml
 ```
 
 ---
 
 ### 6. `rke2-ha-plays/install-rke2-agent-nodes.yml`
-**Hosts:** `rke2_agents`
+**Hosts:** `rke2-worker-nodes`
 
-Joins any agent nodes defined in the `[rke2_agents]` inventory group. Agent nodes
+Joins any agent nodes defined in the `[rke2-worker-nodes]` inventory group. Agent nodes
 connect via the VIP so they remain connected even if the bootstrap node goes down.
-Exits cleanly if `rke2_agents` is empty or not defined.
+Exits cleanly if `rke2-worker-nodes` is empty or not defined.
 
 **Vars file:** `rke2-ha-plays/vars/install-rke2-agent-nodes.yml`
 
@@ -174,8 +174,8 @@ ansible-playbook -i inventory rke2-ha-plays/install-rke2-agent-nodes.yml
 | Group | Role |
 |-------|------|
 | `rke2_bootstrap` | Node 1 only — initializes the etcd cluster |
-| `rke2_servers` | All three server nodes including node1 |
-| `rke2_agents` | Agent nodes (optional) |
+| `rke2-control-nodes` | All three server nodes including node1 |
+| `rke2-worker-nodes` | Agent nodes (optional) |
 
 Example inventory:
 
@@ -183,7 +183,7 @@ Example inventory:
 [rke2_bootstrap]
 node1 ansible_host=192.168.1.201 ansible_user=root
 
-[rke2_servers]
+[rke2-control-nodes]
 node1 ansible_host=192.168.1.201 ansible_user=root
 node2 ansible_host=192.168.1.202 ansible_user=root
 node3 ansible_host=192.168.1.203 ansible_user=root

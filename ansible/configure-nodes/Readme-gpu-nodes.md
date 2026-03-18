@@ -16,15 +16,15 @@ Add your GPU nodes to the `[gpu_nodes]` inventory group before running either pa
 
 ## Path A — os-mode (User-Managed Driver)
 
-Orchestrated by `gpu-nodes.yml` — runs all four plays below in order:
+Orchestrated by `run-gpu-node-plays.yml` — runs all four plays below in order:
 
 ```bash
-ansible-playbook -i inventory gpu-nodes.yml
+ansible-playbook -i inventory run-gpu-node-plays.yml
 ```
 
 Or run each play individually:
 
-### 1. `gpu-node-plays/gpu-node-nvidia-secrets.yml`
+### 1. `credentials/gpu-node-nvidia-secrets.yml`
 **Hosts:** `rke2_bootstrap`
 
 Creates the NVIDIA NGC pull secret in the `gpu-operator` namespace. Required before
@@ -33,7 +33,7 @@ secret is optional and only required for container-mode.
 
 **Vars file:**
 ```bash
-cp gpu-node-plays/vars/gpu-node-nvidia-secrets.yml.example gpu-node-plays/vars/gpu-node-nvidia-secrets.yml
+cp credentials/gpu-node-nvidia-secrets.yml.example credentials/gpu-node-nvidia-secrets.yml
 ```
 
 | Variable | Description |
@@ -44,7 +44,7 @@ cp gpu-node-plays/vars/gpu-node-nvidia-secrets.yml.example gpu-node-plays/vars/g
 | `nvidia_registry.namespace` | Namespace for the secret (e.g. `gpu-operator`) |
 
 ```bash
-ansible-playbook -i inventory gpu-node-plays/gpu-node-nvidia-secrets.yml
+ansible-playbook -i inventory credentials/gpu-node-nvidia-secrets.yml
 ```
 
 ---
@@ -120,7 +120,7 @@ ansible-playbook -i inventory gpu-node-plays/generate-nvidia-gpu-operator.yml
 
 Run the plays individually in this order:
 
-### 1. `gpu-node-plays/gpu-node-nvidia-secrets.yml`
+### 1. `credentials/gpu-node-nvidia-secrets.yml`
 **Hosts:** `rke2_bootstrap`
 
 Creates both the NVIDIA NGC secret **and** the SUSE AppCo secret. The AppCo secret
@@ -131,7 +131,7 @@ Uncomment the `suse_appco` section in the vars file before running.
 
 **Vars file:**
 ```bash
-cp gpu-node-plays/vars/gpu-node-nvidia-secrets.yml.example gpu-node-plays/vars/gpu-node-nvidia-secrets.yml
+cp credentials/gpu-node-nvidia-secrets.yml.example credentials/gpu-node-nvidia-secrets.yml
 ```
 
 | Variable | Description |
@@ -146,7 +146,7 @@ cp gpu-node-plays/vars/gpu-node-nvidia-secrets.yml.example gpu-node-plays/vars/g
 | `suse_appco.namespace` | Namespace (e.g. `gpu-operator`) |
 
 ```bash
-ansible-playbook -i inventory gpu-node-plays/gpu-node-nvidia-secrets.yml
+ansible-playbook -i inventory credentials/gpu-node-nvidia-secrets.yml
 ```
 
 ---

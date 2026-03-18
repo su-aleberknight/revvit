@@ -1,5 +1,5 @@
 #!/bin/bash
-# Runs rancher-manager.yml against the bootstrap node defined in the inventory file.
+# Runs run-rancher-manager-plays.yml against the bootstrap node defined in the inventory file.
 #
 # Before running, copy and fill in each vars file:
 #   cp rancher-manager-plays/vars/install-cert-manager.yml.example rancher-manager-plays/vars/install-cert-manager.yml
@@ -64,4 +64,4 @@ echo "  3. rancher-manager-plays/install-cert-manager.yml"
 echo "  4. rancher-manager-plays/install-rancher.yml"
 echo ""
 
-ansible-playbook rancher-manager.yml -i "$INVENTORY"
+ansible-playbook run-rancher-manager-plays.yml -i "$INVENTORY"

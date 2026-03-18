@@ -1,16 +1,16 @@
 ---
 # Inventory group required:
-#   [rke2_servers]  - nodes 2 and 3 only
+#   [rke2-control-nodes]  - nodes 2 and 3 only
 #
-# Run install-rke2-bootstrap-node.yml first and wait for it to complete
+# Run install-rke2-leader-node.yml first and wait for it to complete
 # before running this playbook. Secondary servers join via the bootstrap node's
 # real IP — the VIP handles traffic once all three servers are up.
 
 - name: Validate variables
-  hosts: rke2_servers
+  hosts: rke2-control-nodes
   gather_facts: false
   vars_files:
-    - vars/install-rke2-server-nodes.yml
+    - vars/create-control-plane.yml
 
   tasks:
     - name: Validate required variables are defined
@@ -19,37 +19,53 @@
           ERROR: Missing required variables.
 
           Usage:
-            ansible-playbook install-rke2-server-nodes.yml [-i inventory]
+            ansible-playbook create-control-plane.yml [-i inventory]
 
-          Required vars file (vars/install-rke2-server-nodes.yml):
-            cp vars/install-rke2-server-nodes.yml.example vars/install-rke2-server-nodes.yml
-            # then edit vars/install-rke2-server-nodes.yml
+          Required vars file (vars/create-control-plane.yml):
+            cp vars/create-control-plane.yml.example vars/create-control-plane.yml
+            # then edit vars/create-control-plane.yml
 
           Required inventory groups:
             [rke2_bootstrap]   <- node 1 only
-            [rke2_servers]     <- nodes 2 and 3 only
+            [rke2-control-nodes]     <- nodes 2 and 3 only
 
           File contents:
             rke2_version: "v1.34.3+rke2r3"
             rke2_token: "your-shared-secret-here"
-            rke2_vip_ip: "192.168.1.100"
-            rke2_vip_hostname: "rke2.example.local"
       run_once: true
       when: >
         rke2_token is not defined or rke2_token | length == 0 or
-        rke2_vip_ip is not defined or
-        rke2_vip_hostname is not defined or
         rke2_version is not defined or rke2_version | length == 0
 
-- name: Join server nodes 2 and 3
-  hosts: rke2_servers
+- name: Attach control plane nodes
+  hosts: rke2-control-nodes
   become: true
   vars_files:
-    - vars/install-rke2-server-nodes.yml
+    - vars/create-control-plane.yml
   vars:
     rke2_is_bootstrap: false
+    rke2_vip_ip: "{{ hostvars[groups['vip'][0]]['ansible_host'] }}"
+    rke2_vip_hostname: "{{ groups['vip'][0] }}"
 
   tasks:
+    - name: Check vip_interface environment variable is set
+      ansible.builtin.shell:
+        cmd: grep -q '^vip_interface=' /etc/environment && grep -v '^vip_interface=$' /etc/environment | grep -q '^vip_interface='
+      register: vip_interface_check
+      changed_when: false
+      failed_when: false
+      when: use_vip | default(true) | bool
+
+    - name: Abort if vip_interface is not set and use_vip is not false
+      ansible.builtin.fail:
+        msg: |
+          ERROR: vip_interface environment variable is not set on {{ inventory_hostname }}.
+          Run create-vip-interface-env-var.yml before this playbook, or set use_vip: false
+          in vars/create-control-plane.yml to skip this check.
+      when:
+        - use_vip | default(true) | bool
+        - vip_interface_check.rc != 0
+
     - name: Create RKE2 config directory
       ansible.builtin.file:
         path: /etc/rancher/rke2

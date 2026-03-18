@@ -25,20 +25,20 @@ Use the shell script — it validates all vars files exist before running and pr
 the play order:
 
 ```bash
-./rancher-manager-runthisfirst.sh [-i inventory]
+./preflight-check.sh [-i inventory]
 ```
 
 The script reads the bootstrap node IP from the `[rke2_bootstrap]` inventory group,
 validates all required vars files are present, then runs:
 
 ```bash
-ansible-playbook rancher-manager.yml -i inventory
+ansible-playbook run-rancher-manager-plays.yml -i inventory
 ```
 
 Or invoke the playbook directly:
 
 ```bash
-ansible-playbook -i inventory rancher-manager.yml
+ansible-playbook -i inventory run-rancher-manager-plays.yml
 ```
 
 ---
@@ -124,7 +124,7 @@ Must run after cert-manager is installed and ready.
 |----------|-------------|
 | `rancher_version` | Rancher Manager Helm chart version (e.g. `2.13.2`) |
 | `rancher_hostname` | Hostname used to access the Rancher UI — must resolve to the bootstrap node IP or VIP |
-| `rancher_bootstrap_password` | Initial admin password set on first login |
+| `rancher_manager_password` | Initial admin password set on first login |
 
 ```bash
 ansible-playbook -i inventory rancher-manager-plays/install-rancher.yml
@@ -149,7 +149,7 @@ Once the play completes, open a browser to:
 https://<rancher_hostname>
 ```
 
-Log in with the `rancher_bootstrap_password` defined in the vars file. You will be
+Log in with the `rancher_manager_password` defined in the vars file. You will be
 prompted to set a new password on first login.
 
 If `rancher_hostname` is not in DNS, add it to your local `/etc/hosts`:

@@ -1,13 +1,13 @@
 ---
 # Inventory group required:
-#   [rke2_agents]  - agent nodes (optional — omit group or leave empty to skip)
+#   [rke2-worker-nodes]  - agent nodes (optional — omit group or leave empty to skip)
 #
 # Agent nodes join via the VIP (load balancer) so they remain connected even if
 # the bootstrap node goes down. Run after both server playbooks have completed.
-# This play exits cleanly if the rke2_agents inventory group is empty.
+# This play exits cleanly if the rke2-worker-nodes inventory group is empty.
 
 - name: Validate variables
-  hosts: rke2_agents
+  hosts: rke2-worker-nodes
   gather_facts: false
   vars_files:
     - vars/install-rke2-agent-nodes.yml
@@ -26,28 +26,28 @@
             # then edit vars/install-rke2-agent-nodes.yml
 
           Required inventory group:
-            [rke2_agents]   <- agent nodes (optional)
+            [rke2-worker-nodes]   <- agent nodes (optional)
 
           File contents:
             rke2_version: "v1.34.3+rke2r3"
             rke2_token: "your-shared-secret-here"
-            rke2_vip_ip: "192.168.1.100"
       run_once: true
       when: >
         rke2_token is not defined or rke2_token | length == 0 or
-        rke2_vip_ip is not defined or
         rke2_version is not defined or rke2_version | length == 0
 
 - name: Join agent nodes
-  hosts: rke2_agents
+  hosts: rke2-worker-nodes
   become: true
   vars_files:
     - vars/install-rke2-agent-nodes.yml
+  vars:
+    rke2_vip_ip: "{{ hostvars[groups['vip'][0]]['ansible_host'] }}"
 
   tasks:
     - name: Skip if no agents defined in inventory
       ansible.builtin.meta: end_play
-      when: groups['rke2_agents'] | default([]) | length == 0
+      when: groups['rke2-worker-nodes'] | default([]) | length == 0
 
     - name: Create RKE2 config directory
       ansible.builtin.file:

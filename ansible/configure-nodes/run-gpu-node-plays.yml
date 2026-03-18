@@ -6,12 +6,12 @@
 # Run install-rke2-ha.yml or install-rke2-singlenode-run.yml first.
 #
 # Calls each playbook in the correct order:
-#   1. gpu-node-plays/gpu-node-nvidia-secrets.yml               — creates NGC pull secret on the cluster
+#   1. credentials/gpu-node-nvidia-secrets.yml               — creates NGC pull secret on the cluster
 #   2. gpu-node-plays/gpu-node-nvidia-user-managed-preboot.yml  — installs NVIDIA driver on GPU nodes, then reboots
 #   3. gpu-node-plays/gpu-node-nvidia-user-managed-postboot.yml — installs container toolkit, configures containerd
 #   4. gpu-node-plays/generate-nvidia-gpu-operator.yml          — deploys GPU operator (driver disabled)
 
-- import_playbook: gpu-node-plays/gpu-node-nvidia-secrets.yml
+- import_playbook: credentials/gpu-node-nvidia-secrets.yml
 - import_playbook: gpu-node-plays/gpu-node-nvidia-user-managed-preboot.yml
 - import_playbook: gpu-node-plays/gpu-node-nvidia-user-managed-postboot.yml
 - import_playbook: gpu-node-plays/generate-nvidia-gpu-operator.yml

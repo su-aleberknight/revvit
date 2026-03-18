@@ -5,8 +5,4 @@ rke2_version: "v1.34.3+rke2r3"
 # Shared secret — must match the token used on the bootstrap node.
 rke2_token: "your-shared-secret-here"
 
-# Virtual IP of the kube-vip load balancer.
-# Secondary nodes join via the bootstrap node's real IP (port 9345) during install,
-# then use the VIP for all subsequent API server communication.
-rke2_vip_ip: "192.168.122.100"
-rke2_vip_hostname: "rke2.example.local"
+# rke2_vip_ip and rke2_vip_hostname are pulled from the [vip] inventory group.

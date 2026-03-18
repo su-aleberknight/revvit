@@ -8,19 +8,9 @@
   become: true
   vars_files:
     - vars/configure-etc-hosts.yml
-
-  pre_tasks:
-    - name: Validate required variables are defined
-      ansible.builtin.fail:
-        msg: |
-          ERROR: Missing required variables.
-
-          Required vars file (vars/configure-etc-hosts.yml):
-            cp vars/configure-etc-hosts.yml.example vars/configure-etc-hosts.yml
-
-          'rke2_vip_ip' and 'rke2_vip_hostname' must be defined.
-      run_once: true
-      when: rke2_vip_ip is not defined or rke2_vip_hostname is not defined
+  vars:
+    rke2_vip_ip: "{{ hostvars[groups['vip'][0]]['ansible_host'] }}"
+    rke2_vip_hostname: "{{ groups['vip'][0] }}"
 
   tasks:
     - name: Write RKE2 cluster entries to /etc/hosts
@@ -28,7 +18,7 @@
         path: /etc/hosts
         marker: "# {mark} RKE2 CLUSTER"
         block: |
-          {% for host in groups['rke2_servers'] | unique %}
+          {% for host in groups['rke2-control-nodes'] | unique %}
           {{ hostvars[host]['ansible_host'] }}  {{ host }}
           {% endfor %}
           {{ rke2_vip_ip }}  {{ rke2_vip_hostname }}

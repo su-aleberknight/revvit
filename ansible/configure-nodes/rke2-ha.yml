@@ -6,21 +6,21 @@
 #     cp rke2-ha-plays/vars/suseconnect.yml.example rke2-ha-plays/vars/suseconnect.yml
 #     cp rke2-ha-plays/vars/configure-etc-hosts.yml.example rke2-ha-plays/vars/configure-etc-hosts.yml
 #     cp rke2-ha-plays/vars/install-lb-for-api-server-ha.yml.example rke2-ha-plays/vars/install-lb-for-api-server-ha.yml
-#     cp rke2-ha-plays/vars/install-rke2-bootstrap-node.yml.example rke2-ha-plays/vars/install-rke2-bootstrap-node.yml
-#     cp rke2-ha-plays/vars/install-rke2-server-nodes.yml.example rke2-ha-plays/vars/install-rke2-server-nodes.yml
+#     cp rke2-ha-plays/vars/install-rke2-leader-node.yml.example rke2-ha-plays/vars/install-rke2-leader-node.yml
+#     cp rke2-ha-plays/vars/create-control-plane.yml.example rke2-ha-plays/vars/create-control-plane.yml
 #     cp rke2-ha-plays/vars/install-rke2-agent-nodes.yml.example rke2-ha-plays/vars/install-rke2-agent-nodes.yml
 #
 # Run order:
 #   1. suseconnect.yml                       — register all nodes with SUSE and activate modules
 #   2. configure-etc-hosts.yml               — write cluster node IPs and VIP to /etc/hosts
 #   3. install-lb-for-api-server-ha.yml      — deploy kube-vip static pod on all server nodes
-#   4. install-rke2-bootstrap-node.yml       — install RKE2 on node1, initialise etcd cluster
-#   5. install-rke2-server-nodes.yml      — join node2 and node3 to the cluster
+#   4. install-rke2-leader-node.yml       — install RKE2 on node1, initialise etcd cluster
+#   5. create-control-plane.yml      — join node2 and node3 to the cluster
 #   6. install-rke2-agent-nodes.yml — join optional agent nodes via the VIP
 
 - import_playbook: rke2-ha-plays/suseconnect.yml
 - import_playbook: rke2-ha-plays/configure-etc-hosts.yml
 - import_playbook: rke2-ha-plays/install-lb-for-api-server-ha.yml
-- import_playbook: rke2-ha-plays/install-rke2-bootstrap-node.yml
-- import_playbook: rke2-ha-plays/install-rke2-server-nodes.yml
+- import_playbook: rke2-ha-plays/install-rke2-leader-node.yml
+- import_playbook: rke2-ha-plays/create-control-plane.yml
 - import_playbook: rke2-ha-plays/install-rke2-agent-nodes.yml

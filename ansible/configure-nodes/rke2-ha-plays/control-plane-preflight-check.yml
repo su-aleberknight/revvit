@@ -1,0 +1,49 @@
+---
+# Verifies the leader node is ready before attaching control plane nodes.
+# Checks that RKE2 is installed and that a token is present in its config.
+#
+# Run this before create-control-plane.yml.
+
+- name: Control plane preflight check
+  hosts: rke2-leader-node
+  become: true
+  gather_facts: false
+
+  tasks:
+    - name: Check RKE2 binary is installed
+      ansible.builtin.stat:
+        path: /usr/local/bin/rke2
+      register: rke2_binary
+
+    - name: Abort if RKE2 is not installed on leader node
+      ansible.builtin.fail:
+        msg: |
+          ERROR: RKE2 is not installed on {{ inventory_hostname }}.
+          Run install-rke2-leader-node.yml before running create-control-plane.yml.
+      when: not rke2_binary.stat.exists
+
+    - name: Check RKE2 config file exists
+      ansible.builtin.stat:
+        path: /etc/rancher/rke2/config.yaml
+      register: rke2_config
+
+    - name: Abort if RKE2 config file is missing on leader node
+      ansible.builtin.fail:
+        msg: |
+          ERROR: /etc/rancher/rke2/config.yaml not found on {{ inventory_hostname }}.
+          Run install-rke2-leader-node.yml before running create-control-plane.yml.
+      when: not rke2_config.stat.exists
+
+    - name: Check token is set in RKE2 config
+      ansible.builtin.shell:
+        cmd: grep -q '^token:' /etc/rancher/rke2/config.yaml && grep -v '^token:\s*$' /etc/rancher/rke2/config.yaml | grep -q '^token:'
+      register: token_check
+      changed_when: false
+      failed_when: false
+
+    - name: Abort if token is missing or empty in RKE2 config
+      ansible.builtin.fail:
+        msg: |
+          ERROR: No token found in /etc/rancher/rke2/config.yaml on {{ inventory_hostname }}.
+          The leader node must have a valid token set before control plane nodes can join.
+      when: token_check.rc != 0

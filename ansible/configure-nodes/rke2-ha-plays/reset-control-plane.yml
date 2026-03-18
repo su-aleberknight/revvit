@@ -1,0 +1,37 @@
+---
+# Removes RKE2 from all control plane nodes.
+# Run this to fully reset [rke2-control-nodes] before re-running create-control-plane.yml.
+
+- name: Reset control plane nodes
+  hosts: rke2-control-nodes
+  become: true
+
+  tasks:
+    - name: Stop rke2-server service
+      ansible.builtin.systemd:
+        name: rke2-server
+        state: stopped
+      failed_when: false
+
+    - name: Disable rke2-server service
+      ansible.builtin.systemd:
+        name: rke2-server
+        enabled: false
+      failed_when: false
+
+    - name: Run RKE2 uninstall script
+      ansible.builtin.shell:
+        cmd: /usr/local/bin/rke2-uninstall.sh
+      args:
+        removes: /usr/local/bin/rke2-uninstall.sh
+
+    - name: Remove RKE2 config directory
+      ansible.builtin.file:
+        path: /etc/rancher/rke2
+        state: absent
+
+    - name: Remove vip_interface from /etc/environment
+      ansible.builtin.lineinfile:
+        path: /etc/environment
+        regexp: '^vip_interface='
+        state: absent

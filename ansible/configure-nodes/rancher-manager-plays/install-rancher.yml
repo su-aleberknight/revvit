@@ -4,10 +4,12 @@
 #   ansible-playbook install-cert-manager.yml -i inventory
 
 - name: Install Rancher Manager
-  hosts: rke2_bootstrap
+  hosts: rancher-manager-node
   become: true
   vars_files:
     - vars/install-rancher.yml
+  vars:
+    rancher_hostname: "{{ groups['rancher-manager-node'][0] }}"
   environment:
     KUBECONFIG: /etc/rancher/rke2/rke2.yaml
     PATH: "/var/lib/rancher/rke2/bin:{{ ansible_env.PATH }}"
@@ -28,11 +30,10 @@
           File contents:
             rancher_version: "2.13.2"
             rancher_hostname: "rke2.example.local"
-            rancher_bootstrap_password: "changeme"
+            rancher_manager_password: "changeme"
       when: >
         rancher_version is not defined or rancher_version | length == 0 or
-        rancher_hostname is not defined or rancher_hostname | length == 0 or
-        rancher_bootstrap_password is not defined or rancher_bootstrap_password | length == 0
+        rancher_manager_password is not defined or rancher_manager_password | length == 0
 
   tasks:
     - name: Add Rancher stable Helm repo
@@ -59,7 +60,7 @@
           --namespace cattle-system
           --version {{ rancher_version | quote }}
           --set hostname={{ rancher_hostname | quote }}
-          --set bootstrapPassword={{ rancher_bootstrap_password | quote }}
+          --set bootstrapPassword={{ rancher_manager_password | quote }}
       register: rancher_result
       changed_when: "'has been upgraded' in rancher_result.stdout or 'has been deployed' in rancher_result.stdout"
 
@@ -73,4 +74,4 @@
         msg:
           - "Rancher Manager is ready."
           - "URL: https://{{ rancher_hostname }}"
-          - "Bootstrap password: {{ rancher_bootstrap_password }}"
+          - "Bootstrap password: {{ rancher_manager_password }}"

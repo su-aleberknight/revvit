@@ -29,16 +29,16 @@
 
           File contents:
             rke2_version: "v1.34.3+rke2r3"
-            rke2_node_ip: "192.168.1.10"
       when: >
-        rke2_version is not defined or rke2_version | length == 0 or
-        rke2_node_ip is not defined or rke2_node_ip | length == 0
+        rke2_version is not defined or rke2_version | length == 0
 
 - name: Install RKE2 standalone
   hosts: rke2_standalone
   become: true
   vars_files:
     - vars/install-rke2-singlenode.yml
+  vars:
+    rke2_node_ip: "{{ hostvars[groups['rke2_standalone'][0]]['ansible_host'] }}"
 
   tasks:
     - name: Create RKE2 config directory

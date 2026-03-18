@@ -1,0 +1,19 @@
+---
+- name: Set vip_interface environment variable on control plane nodes
+  hosts: rke2-control-nodes
+  become: true
+
+  tasks:
+    - name: Detect interface name for node IP
+      ansible.builtin.shell:
+        cmd: ip -o addr show | awk '$4 ~ /^{{ ansible_host }}\// {print $2; exit}'
+      register: detected_interface
+      changed_when: false
+
+    - name: Set vip_interface environment variable
+      ansible.builtin.lineinfile:
+        path: /etc/environment
+        regexp: '^vip_interface='
+        line: "vip_interface={{ detected_interface.stdout }}"
+        create: true
+        mode: "0644"

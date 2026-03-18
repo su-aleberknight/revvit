@@ -2,5 +2,4 @@
 # RKE2 version to install
 rke2_version: "v1.34.3+rke2r3"
 
-# IP address of the standalone node (used for TLS SAN)
-rke2_node_ip: "192.168.1.10"
+# rke2_node_ip is pulled from the [rke2_standalone] inventory group (ansible_host).

@@ -1,5 +1,4 @@
 ---
 # VIP managed by kube-vip — added to /etc/hosts on all nodes.
-# Node IPs and hostnames are pulled directly from the inventory file.
-rke2_vip_ip: "192.168.122.100"
-rke2_vip_hostname: "rke2.example.local"
+# rke2_vip_ip and rke2_vip_hostname are pulled from the [vip] inventory group.
+# No variables need to be defined here — all values are derived from inventory.

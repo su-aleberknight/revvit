@@ -8,11 +8,11 @@
 #
 # Run order:
 #   1. install-lb-for-api-server-ha.yml          <- this file
-#   2. install-rke2-bootstrap-node.yml
-#   3. install-rke2-server-nodes.yml
+#   2. install-rke2-leader-node.yml
+#   3. create-control-plane.yml
 
 - name: Validate variables
-  hosts: rke2_bootstrap:rke2_servers
+  hosts: rke2_bootstrap:rke2-control-nodes
   gather_facts: false
   vars_files:
     - vars/install-lb-for-api-server-ha.yml
@@ -32,23 +32,22 @@
 
           Required inventory groups:
             [rke2_bootstrap]   <- node 1 only
-            [rke2_servers]     <- nodes 2 and 3 only
+            [rke2-control-nodes]     <- nodes 2 and 3 only
 
           File contents:
             kube_vip_version: "v0.8.9"
-            rke2_vip_ip: "192.168.1.100"
-            rke2_vip_hostname: "rke2.example.local"
       run_once: true
       when: >
-        kube_vip_version is not defined or kube_vip_version | length == 0 or
-        rke2_vip_ip is not defined or
-        rke2_vip_hostname is not defined
+        kube_vip_version is not defined or kube_vip_version | length == 0
 
 - name: Deploy kube-vip on all server nodes
-  hosts: rke2_bootstrap:rke2_servers
+  hosts: rke2_bootstrap:rke2-control-nodes
   become: true
   vars_files:
     - vars/install-lb-for-api-server-ha.yml
+  vars:
+    rke2_vip_ip: "{{ hostvars[groups['vip'][0]]['ansible_host'] }}"
+    rke2_vip_hostname: "{{ groups['vip'][0] }}"
 
   tasks:
     - name: Verify eno1 interface exists on node
