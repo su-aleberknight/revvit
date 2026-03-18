@@ -7,18 +7,40 @@
   become: true
 
   tasks:
-    - name: Run RKE2 killall script
+    - name: Run RKE2 killall script (server path)
       ansible.builtin.shell:
         cmd: /opt/rke2/bin/rke2-killall.sh
       args:
         removes: /opt/rke2/bin/rke2-killall.sh
       failed_when: false
 
-    - name: Run RKE2 uninstall script
+    - name: Run RKE2 killall script (agent path)
+      ansible.builtin.shell:
+        cmd: /usr/local/bin/rke2-killall.sh
+      args:
+        removes: /usr/local/bin/rke2-killall.sh
+      failed_when: false
+
+    - name: Run RKE2 uninstall script (server path)
       ansible.builtin.shell:
         cmd: /opt/rke2/bin/rke2-uninstall.sh
       args:
         removes: /opt/rke2/bin/rke2-uninstall.sh
+      failed_when: false
+
+    - name: Run RKE2 agent uninstall script (agent path)
+      ansible.builtin.shell:
+        cmd: /usr/local/bin/rke2-agent-uninstall.sh
+      args:
+        removes: /usr/local/bin/rke2-agent-uninstall.sh
+      failed_when: false
+
+    - name: Run RKE2 uninstall script (usr local path)
+      ansible.builtin.shell:
+        cmd: /usr/local/bin/rke2-uninstall.sh
+      args:
+        removes: /usr/local/bin/rke2-uninstall.sh
+      failed_when: false
 
     - name: Remove RKE2 config directory
       ansible.builtin.file:
