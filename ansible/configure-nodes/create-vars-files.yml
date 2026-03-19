@@ -9,4 +9,4 @@
 - import_playbook: rke2-singlenode-plays/create-vars-rke2-singlenode-plays.yml
 - import_playbook: rancher-manager-plays/create-vars-rancher-manager-plays.yml
 - import_playbook: gpu-node-plays/create-vars-gpu-node-plays.yml
-- import_playbook: credentials/create-vars-credentials.yml
+- import_playbook: credentials/create-vars-files.yml

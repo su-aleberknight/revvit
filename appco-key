@@ -1,0 +1,19 @@
+username:
+aleberknight@suse.com
+
+email:
+alan.leberknight@suse.com
+
+access-token:
+Y29rd2Jxa2VzenZxc3dtbHRjZ2dqZmtsa3poZW5saGp0YmNuamVybG5hZnNmY3Vid2t1dHNtbXpja2xja3FleA==
+
+
+how to use the access token (examples)
+
+docker login dp.apps.rancher.io -u aleberknight@suse.com -p Y29rd2Jxa2VzenZxc3dtbHRjZ2dqZmtsa3poZW5saGp0YmNuamVybG5hZnNmY3Vid2t1dHNtbXpja2xja3FleA==
+
+helm registry login dp.apps.rancher.io -u aleberknight@suse.com -p Y29rd2Jxa2VzenZxc3dtbHRjZ2dqZmtsa3poZW5saGp0YmNuamVybG5hZnNmY3Vid2t1dHNtbXpja2xja3FleA==
+
+kubectl create secret docker-registry application-collection --docker-server=dp.apps.rancher.io --docker-username=aleberknight@suse.com --docker-password=Y29rd2Jxa2VzenZxc3dtbHRjZ2dqZmtsa3poZW5saGp0YmNuamVybG5hZnNmY3Vid2t1dHNtbXpja2xja3FleA==
+
+curl -u aleberknight@suse.com:Y29rd2Jxa2VzenZxc3dtbHRjZ2dqZmtsa3poZW5saGp0YmNuamVybG5hZnNmY3Vid2t1dHNtbXpja2xja3FleA== https://api.apps.rancher.io/v1/applications
