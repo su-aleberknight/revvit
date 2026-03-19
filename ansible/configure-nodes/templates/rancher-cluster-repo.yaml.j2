@@ -4,4 +4,5 @@ metadata:
   name: {{ repo.name }}
 spec:
   url: {{ repo.url }}
-  secretName: {{ repo.secret_name }}
+  clientSecret:
+    name: {{ repo.secret_name }}
