@@ -43,8 +43,9 @@
   tasks:
     - name: Add NGC Helm repo
       ansible.builtin.command:
-        cmd: helm repo add nvidia {{ ngc_helm_registry }} --force-update
+        cmd: helm repo add nvidia {{ ngc_helm_registry }} --username $oauthtoken --password {{ ngc_api_key | quote }} --force-update
       changed_when: false
+      no_log: true
       run_once: true
 
     - name: Update Helm repos

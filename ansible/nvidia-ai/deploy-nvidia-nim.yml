@@ -53,8 +53,13 @@
 
     - name: Add NIM Operator Helm repo
       ansible.builtin.command:
-        cmd: helm repo add nim-operator {{ nim_operator_helm_registry }} --force-update
+        cmd: >
+          helm repo add nim-operator {{ nim_operator_helm_registry }}
+          --username $oauthtoken
+          --password {{ ngc_api_key | quote }}
+          --force-update
       changed_when: false
+      no_log: true
       run_once: true
 
     - name: Update Helm repos
