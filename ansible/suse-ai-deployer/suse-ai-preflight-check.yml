@@ -10,8 +10,8 @@
   hosts: localhost
   gather_facts: false
   vars:
-    global_vars_example: "{{ playbook_dir }}/../../global-suse-ai-vars.yaml.example"
-    global_vars_file: "{{ playbook_dir }}/../../global-suse-ai-vars.yaml"
+    global_vars_example: "{{ playbook_dir }}/../global-suse-ai-vars.yaml.example"
+    global_vars_file: "{{ playbook_dir }}/../global-suse-ai-vars.yaml"
 
   tasks:
     - name: Check if global-suse-ai-vars.yaml exists
@@ -23,6 +23,7 @@
       ansible.builtin.copy:
         src: "{{ global_vars_example }}"
         dest: "{{ global_vars_file }}"
+        remote_src: true
         force: false
       when: not global_vars_stat.stat.exists
 
@@ -92,8 +93,8 @@
   hosts: localhost
   gather_facts: false
   vars:
-    deployer_vars_example: "{{ playbook_dir }}/vars/deploy-suse-ai-deployer.yml.example"
-    deployer_vars_file: "{{ playbook_dir }}/vars/deploy-suse-ai-deployer.yml"
+    deployer_vars_example: "{{ playbook_dir }}/suse-ai-deployer/vars/deploy-suse-ai-deployer.yml.example"
+    deployer_vars_file: "{{ playbook_dir }}/suse-ai-deployer/vars/deploy-suse-ai-deployer.yml"
 
   tasks:
     - name: Check if vars/deploy-suse-ai-deployer.yml exists
@@ -105,6 +106,7 @@
       ansible.builtin.copy:
         src: "{{ deployer_vars_example }}"
         dest: "{{ deployer_vars_file }}"
+        remote_src: true
         force: false
       when: not deployer_vars_stat.stat.exists
 

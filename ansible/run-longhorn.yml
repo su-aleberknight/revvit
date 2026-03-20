@@ -1,0 +1,9 @@
+---
+# Orchestrates a full Longhorn installation.
+# Installs open-iscsi on storage nodes first, then deploys Longhorn via Helm.
+#
+# Usage:
+#   ansible-playbook run-longhorn.yml -i inventory
+
+- import_playbook: longhorn/iscsi-check.yml
+- import_playbook: longhorn/install-longhorn.yml
