@@ -75,6 +75,7 @@
         remote_src: true
         force: false
       loop:
+        - deploy-nvidia-nim-operator.yml
         - deploy-nvidia-nim.yml
         - deploy-nvidia-nemo.yml
         - deploy-nvidia-riva.yml

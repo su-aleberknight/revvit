@@ -1,0 +1,123 @@
+---
+# Deploys the NVIDIA NIM Operator.
+# Requires an NVIDIA AI Enterprise (NVAIE) subscription — the nvapi- key
+# from api.nvidia.com is used for the NVAIE license secret.
+#
+# Usage:
+#   ansible-playbook deploy-nvidia-nim-operator.yml -i ../../inventory
+#
+# Required vars files:
+#   cp vars/nvidia-global.yml.example vars/nvidia-global.yml
+#   cp vars/deploy-nvidia-nim-operator.yml.example vars/deploy-nvidia-nim-operator.yml
+#   # then edit both files
+
+- name: Deploy NVIDIA NIM Operator
+  hosts: rke2_bootstrap
+  become: true
+  vars_files:
+    - vars/nvidia-global.yml
+    - vars/deploy-nvidia-nim-operator.yml
+  environment:
+    KUBECONFIG: /etc/rancher/rke2/rke2.yaml
+    PATH: "/var/lib/rancher/rke2/bin:{{ ansible_env.PATH }}"
+
+  pre_tasks:
+    - name: Prompt for ngc_api_key if empty
+      ansible.builtin.pause:
+        prompt: "Enter ngc_api_key (NGC API key for nvcr.io)"
+        echo: false
+      register: prompt_ngc_key
+      when: ngc_api_key is not defined or ngc_api_key | length == 0
+      no_log: true
+
+    - name: Set ngc_api_key from prompt
+      ansible.builtin.set_fact:
+        ngc_api_key: "{{ prompt_ngc_key.user_input }}"
+      when: prompt_ngc_key is not skipped
+      no_log: true
+
+    - name: Prompt for nvaie_api_key (nvapi- key for NVAIE license secret)
+      ansible.builtin.pause:
+        prompt: "Enter nvaie_api_key (nvapi- key from api.nvidia.com for NVAIE licensing)"
+        echo: false
+      register: prompt_nvaie_key
+      when: nvaie_api_key is not defined or nvaie_api_key | length == 0
+      no_log: true
+
+    - name: Set nvaie_api_key from prompt
+      ansible.builtin.set_fact:
+        nvaie_api_key: "{{ prompt_nvaie_key.user_input }}"
+      when: prompt_nvaie_key is not skipped
+      no_log: true
+
+    - name: Validate required variables
+      ansible.builtin.fail:
+        msg: |
+          ERROR: Missing required variables.
+
+          Required vars files:
+            cp vars/nvidia-global.yml.example vars/nvidia-global.yml
+            cp vars/deploy-nvidia-nim-operator.yml.example vars/deploy-nvidia-nim-operator.yml
+
+          Required variables:
+            ngc_api_key: "<your-ngc-api-key>"
+            nvaie_api_key: "<your-nvapi-key>"
+      when: >
+        ngc_api_key is not defined or ngc_api_key | length == 0 or
+        nvaie_api_key is not defined or nvaie_api_key | length == 0
+      no_log: true
+
+  tasks:
+    - name: Log into NGC Helm registry
+      ansible.builtin.command:
+        cmd: >
+          helm registry login nvcr.io
+          -u $oauthtoken
+          -p {{ ngc_api_key | quote }}
+      changed_when: false
+      no_log: true
+      run_once: true
+
+    - name: Create namespace
+      ansible.builtin.command:
+        cmd: kubectl create namespace {{ nvidia_ai_namespace | quote }}
+      register: ns_result
+      failed_when: ns_result.rc != 0 and 'already exists' not in ns_result.stderr
+      changed_when: ns_result.rc == 0
+      run_once: true
+
+    - name: Create NVAIE license secret
+      ansible.builtin.shell:
+        cmd: >
+          kubectl create secret generic nvaie-secret
+          --from-literal=NGC_API_KEY={{ nvaie_api_key | quote }}
+          --namespace={{ nvidia_ai_namespace | quote }}
+          --dry-run=client -o yaml | kubectl apply -f -
+      register: nvaie_secret_result
+      changed_when: "'created' in nvaie_secret_result.stdout or 'configured' in nvaie_secret_result.stdout"
+      no_log: true
+      run_once: true
+
+    - name: Deploy NIM Operator
+      ansible.builtin.command:
+        cmd: >
+          helm upgrade --install nim-operator
+          oci://nvcr.io/nvidia/cloud-native/nim-operator
+          --namespace {{ nvidia_ai_namespace | quote }}
+          {% if nim_operator_version | length > 0 %}--version {{ nim_operator_version | quote }}{% endif %}
+      register: nim_operator_result
+      changed_when: "'has been upgraded' in nim_operator_result.stdout or 'has been deployed' in nim_operator_result.stdout"
+      run_once: true
+
+    - name: Wait for NIM Operator rollout
+      ansible.builtin.command:
+        cmd: kubectl -n {{ nvidia_ai_namespace }} rollout status deploy/nim-operator --timeout=300s
+      changed_when: false
+      run_once: true
+
+    - name: Show NIM Operator deployment info
+      ansible.builtin.debug:
+        msg:
+          - "NVIDIA NIM Operator is ready."
+          - "To verify: kubectl get pods -n {{ nvidia_ai_namespace }}"
+      run_once: true

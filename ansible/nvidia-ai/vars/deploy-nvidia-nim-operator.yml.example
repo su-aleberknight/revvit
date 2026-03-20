@@ -1,0 +1,11 @@
+---
+# NIM Operator deployment vars.
+# Note: ngc_api_key, nvidia_ai_namespace are defined in vars/nvidia-global.yml
+# nvaie_api_key is prompted at runtime if not set here.
+
+# NIM Operator Helm chart version. Leave empty for latest.
+nim_operator_version: ""
+
+# NVAIE API key (nvapi- format) for the NVAIE license secret.
+# Leave empty to be prompted at runtime.
+nvaie_api_key: ""

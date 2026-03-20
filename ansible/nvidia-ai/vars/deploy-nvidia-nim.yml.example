@@ -3,12 +3,6 @@
 # Note: ngc_api_key, nvidia_ai_namespace, ngc_pull_secret_name, storage_class_name
 # are defined in vars/nvidia-global.yml
 
-# NIM Operator Helm chart version. Leave empty for latest.
-nim_operator_version: ""
-
-# NIM Operator Helm registry
-nim_operator_helm_registry: "https://helm.ngc.nvidia.com/nvidia"
-
 # NIM LLM model to deploy
 # Examples: meta/llama-3.1-8b-instruct, mistralai/mistral-7b-instruct-v0.3
 nim_model: "meta/llama-3.1-8b-instruct"
