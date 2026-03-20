@@ -68,15 +68,26 @@
         line: 'nvidia_ai_namespace: "{{ prompt_namespace.user_input }}"'
       when: prompt_namespace is not skipped and prompt_namespace.user_input | length > 0
 
+    - name: Create per-component vars files from examples if missing
+      ansible.builtin.copy:
+        src: "{{ playbook_dir }}/vars/{{ item }}.example"
+        dest: "{{ playbook_dir }}/vars/{{ item }}"
+        remote_src: true
+        force: false
+      loop:
+        - deploy-nvidia-nim.yml
+        - deploy-nvidia-nemo.yml
+        - deploy-nvidia-riva.yml
+        - deploy-nvidia-triton.yml
+        - deploy-nvidia-rapids.yml
+
     - name: Global vars preflight complete
       ansible.builtin.debug:
         msg:
           - "vars/nvidia-global.yml is populated."
-          - "Per-component vars files are validated at deploy time."
-          - "  Expected files:"
+          - "Per-component vars files are ready — edit ingress hosts before deploying:"
           - "    nvidia-ai/vars/deploy-nvidia-nim.yml"
           - "    nvidia-ai/vars/deploy-nvidia-nemo.yml"
           - "    nvidia-ai/vars/deploy-nvidia-riva.yml"
           - "    nvidia-ai/vars/deploy-nvidia-triton.yml"
           - "    nvidia-ai/vars/deploy-nvidia-rapids.yml"
-          - "  Copy from .example and edit ingress hosts before deploying."
