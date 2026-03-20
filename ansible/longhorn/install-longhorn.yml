@@ -13,7 +13,7 @@
 # in vars/install-longhorn.yml
 
 - name: Install Longhorn
-  hosts: rke2-storage-nodes
+  hosts: rke2-bootstrap
   become: true
   vars_files:
     - vars/install-longhorn.yml
@@ -57,11 +57,13 @@
       ansible.builtin.command:
         cmd: helm repo add longhorn {{ lh_helm_repo_url }} --force-update
       changed_when: false
+      run_once: true
 
     - name: Update Helm repos
       ansible.builtin.command:
         cmd: helm repo update
       changed_when: false
+      run_once: true
 
     - name: Write Longhorn values file
       ansible.builtin.copy:
@@ -79,16 +81,19 @@
             provisionerReplicaCount: {{ lh_csi_replica_count }}
             resizerReplicaCount: {{ lh_csi_replica_count }}
             snapshotterReplicaCount: {{ lh_csi_replica_count }}
+      run_once: true
 
     - name: Display Longhorn values file
       ansible.builtin.command:
         cmd: cat {{ longhorn_values_file }}
       changed_when: false
       register: values_content
+      run_once: true
 
     - name: Show Longhorn values
       ansible.builtin.debug:
         msg: "{{ values_content.stdout_lines }}"
+      run_once: true
 
     - name: Install Longhorn via Helm
       ansible.builtin.command:
@@ -99,11 +104,13 @@
           -f {{ longhorn_values_file }}
       register: lh_helm_result
       changed_when: "'has been upgraded' in lh_helm_result.stdout or 'has been deployed' in lh_helm_result.stdout"
+      run_once: true
 
     - name: Wait for longhorn-driver-deployer rollout
       ansible.builtin.command:
         cmd: kubectl -n longhorn-system rollout status deploy/longhorn-driver-deployer --timeout=300s
       changed_when: false
+      run_once: true
 
     - name: Wait for longhorn-ui rollout
       ansible.builtin.command:
@@ -113,6 +120,7 @@
       register: ui_result
       until: ui_result.rc == 0
       changed_when: false
+      run_once: true
 
     - name: Wait for csi-attacher rollout
       ansible.builtin.command:
@@ -122,6 +130,7 @@
       register: attacher_result
       until: attacher_result.rc == 0
       changed_when: false
+      run_once: true
 
     - name: Wait for csi-provisioner rollout
       ansible.builtin.command:
@@ -131,6 +140,7 @@
       register: provisioner_result
       until: provisioner_result.rc == 0
       changed_when: false
+      run_once: true
 
     - name: Wait for csi-resizer rollout
       ansible.builtin.command:
@@ -140,6 +150,7 @@
       register: resizer_result
       until: resizer_result.rc == 0
       changed_when: false
+      run_once: true
 
     - name: Wait for csi-snapshotter rollout
       ansible.builtin.command:
@@ -149,9 +160,11 @@
       register: snapshotter_result
       until: snapshotter_result.rc == 0
       changed_when: false
+      run_once: true
 
     - name: Create additional StorageClasses
       when: lh_additional_storageclasses is defined and lh_additional_storageclasses | length > 0
+      run_once: true
       block:
         - name: Write StorageClass manifests
           ansible.builtin.copy:
@@ -187,13 +200,16 @@
         cmd: kubectl get storageclasses
       changed_when: false
       register: sc_list
+      run_once: true
 
     - name: Show StorageClasses
       ansible.builtin.debug:
         msg: "{{ sc_list.stdout_lines }}"
+      run_once: true
 
     - name: Create Longhorn ingress basic-auth secret
       when: lh_create_ingress | default(false)
+      run_once: true
       block:
         - name: Generate htpasswd entry
           ansible.builtin.command:
@@ -278,3 +294,4 @@
           - "Longhorn is ready."
           - "UI URL: http://{{ lh_url }}"
           - "To verify: kubectl get pods -n longhorn-system"
+      run_once: true
