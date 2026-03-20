@@ -10,8 +10,8 @@
   hosts: localhost
   gather_facts: false
   vars:
-    global_vars_example: "{{ playbook_dir }}/../global-suse-ai-vars.yaml.example"
-    global_vars_file: "{{ playbook_dir }}/../global-suse-ai-vars.yaml"
+    global_vars_example: "{{ playbook_dir | dirname }}/global-suse-ai-vars.yaml.example"
+    global_vars_file: "{{ playbook_dir | dirname }}/global-suse-ai-vars.yaml"
 
   tasks:
     - name: Check if global-suse-ai-vars.yaml exists
@@ -93,8 +93,8 @@
   hosts: localhost
   gather_facts: false
   vars:
-    deployer_vars_example: "{{ playbook_dir }}/suse-ai-deployer/vars/deploy-suse-ai-deployer.yml.example"
-    deployer_vars_file: "{{ playbook_dir }}/suse-ai-deployer/vars/deploy-suse-ai-deployer.yml"
+    deployer_vars_example: "{{ playbook_dir }}/vars/deploy-suse-ai-deployer.yml.example"
+    deployer_vars_file: "{{ playbook_dir }}/vars/deploy-suse-ai-deployer.yml"
 
   tasks:
     - name: Check if vars/deploy-suse-ai-deployer.yml exists
