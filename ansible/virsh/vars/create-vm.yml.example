@@ -20,4 +20,4 @@ vm_graphics: "vnc"
 vm_os_variant: "sles15sp6"
 
 # Inventory group to create VMs for — defaults to 'all'
-# vm_group: "sles-servers"
+# vm_group: "homelab-vm-servers"

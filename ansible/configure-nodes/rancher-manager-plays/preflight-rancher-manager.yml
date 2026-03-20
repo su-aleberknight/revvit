@@ -1,0 +1,72 @@
+---
+# Preflight checks before running the Rancher Manager installation plays.
+# Verifies that all required vars files are present and readable, and
+# that rancher_hostname is set, then prints a summary of what will be run.
+#
+# Run from the ansible/configure-nodes directory:
+#   ansible-playbook rancher-manager-plays/preflight-rancher-manager.yml [-i inventory]
+
+- name: Rancher Manager preflight check
+  hosts: localhost
+  gather_facts: false
+
+  tasks:
+    - name: Check that required vars files exist
+      ansible.builtin.stat:
+        path: "{{ playbook_dir }}/vars/{{ item }}"
+      loop:
+        - install-cert-manager.yml
+        - install-rancher.yml
+      register: vars_stat
+
+    - name: Fail if any required vars file is missing
+      ansible.builtin.fail:
+        msg: |
+          ERROR: Missing vars file: {{ playbook_dir }}/vars/{{ item.item }}
+            cp vars/{{ item.item }}.example vars/{{ item.item }}
+            # then edit vars/{{ item.item }}
+      loop: "{{ vars_stat.results }}"
+      when: not item.stat.exists
+
+    - name: Load install-rancher vars
+      ansible.builtin.include_vars:
+        file: "{{ playbook_dir }}/vars/install-rancher.yml"
+
+    - name: Fail if rancher_hostname is not set
+      ansible.builtin.fail:
+        msg: |
+          ERROR: rancher_hostname is not defined or is empty in vars/install-rancher.yml.
+          Set it to the VIP or FQDN that the Rancher UI will be reached at.
+      when: rancher_hostname is not defined or rancher_hostname | length == 0
+
+    - name: Fail if rancher_version is not set
+      ansible.builtin.fail:
+        msg: |
+          ERROR: rancher_version is not defined or is empty in vars/install-rancher.yml.
+          Example: rancher_version: "2.13.2"
+      when: rancher_version is not defined or rancher_version | length == 0
+
+    - name: Load install-cert-manager vars
+      ansible.builtin.include_vars:
+        file: "{{ playbook_dir }}/vars/install-cert-manager.yml"
+
+    - name: Fail if cert_manager_version is not set
+      ansible.builtin.fail:
+        msg: |
+          ERROR: cert_manager_version is not defined or is empty in vars/install-cert-manager.yml.
+          Example: cert_manager_version: "v1.14.5"
+      when: cert_manager_version is not defined or cert_manager_version | length == 0
+
+    - name: Display installation summary
+      ansible.builtin.debug:
+        msg:
+          - "Installing Rancher Manager"
+          - "Rancher UI will be available at: https://{{ rancher_hostname }}"
+          - ""
+          - "Plays to be run in order:"
+          - "  1. rancher-manager-plays/install-helm.yml"
+          - "  2. rancher-manager-plays/install-cert-manager.yml"
+          - "  3. rancher-manager-plays/install-rancher.yml"
+          - ""
+          - "All preflight checks passed. Run the following to proceed:"
+          - "  ansible-playbook run-rancher-manager-plays.yml [-i inventory]"

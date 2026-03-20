@@ -1,0 +1,280 @@
+---
+# Installs Longhorn distributed block storage on an RKE2 cluster.
+#
+# Usage:
+#   ansible-playbook install-longhorn.yml -i ../configure-nodes/inventory
+#
+# Required vars file (vars/install-longhorn.yml):
+#   cp vars/install-longhorn.yml.example vars/install-longhorn.yml
+#   # then edit vars/install-longhorn.yml
+#
+# To also create an nginx Ingress for the Longhorn UI, set:
+#   lh_create_ingress: true
+# in vars/install-longhorn.yml
+
+- name: Install Longhorn
+  hosts: rke2_bootstrap
+  become: true
+  vars_files:
+    - vars/install-longhorn.yml
+  vars:
+    longhorn_values_file: /tmp/longhorn-values.yaml
+  environment:
+    KUBECONFIG: /etc/rancher/rke2/rke2.yaml
+    PATH: "/var/lib/rancher/rke2/bin:{{ ansible_env.PATH }}"
+
+  pre_tasks:
+    - name: Validate required variables are defined
+      ansible.builtin.fail:
+        msg: |
+          ERROR: Missing required variables.
+
+          Usage:
+            ansible-playbook install-longhorn.yml [-i ../configure-nodes/inventory]
+
+          Required vars file (vars/install-longhorn.yml):
+            cp vars/install-longhorn.yml.example vars/install-longhorn.yml
+            # then edit vars/install-longhorn.yml
+
+          Required variables:
+            lh_helm_repo_url: "https://charts.longhorn.io"
+            lh_url: "longhorn.example.com"
+            lh_user: "admin"
+            lh_password: "longhorn"
+            lh_default_replica_count: 1
+            lh_default_class_replica_count: 1
+            lh_csi_replica_count: 1
+            lh_reserved_disk_percentage: 15
+            lh_default_sc_fs_type: "ext4"
+      when: >
+        lh_helm_repo_url is not defined or lh_helm_repo_url | length == 0 or
+        lh_url is not defined or lh_url | length == 0 or
+        lh_user is not defined or lh_user | length == 0 or
+        lh_password is not defined or lh_password | length == 0
+
+  tasks:
+    - name: Add Longhorn Helm repo
+      ansible.builtin.command:
+        cmd: helm repo add longhorn {{ lh_helm_repo_url }} --force-update
+      changed_when: false
+
+    - name: Update Helm repos
+      ansible.builtin.command:
+        cmd: helm repo update
+      changed_when: false
+
+    - name: Write Longhorn values file
+      ansible.builtin.copy:
+        dest: "{{ longhorn_values_file }}"
+        mode: "0600"
+        content: |
+          defaultSettings:
+            defaultReplicaCount: {{ lh_default_replica_count }}
+            storageReservedPercentageForDefaultDisk: {{ lh_reserved_disk_percentage }}
+          persistence:
+            defaultClassReplicaCount: {{ lh_default_class_replica_count }}
+            defaultFsType: {{ lh_default_sc_fs_type }}
+          csi:
+            attacherReplicaCount: {{ lh_csi_replica_count }}
+            provisionerReplicaCount: {{ lh_csi_replica_count }}
+            resizerReplicaCount: {{ lh_csi_replica_count }}
+            snapshotterReplicaCount: {{ lh_csi_replica_count }}
+
+    - name: Display Longhorn values file
+      ansible.builtin.command:
+        cmd: cat {{ longhorn_values_file }}
+      changed_when: false
+      register: values_content
+
+    - name: Show Longhorn values
+      ansible.builtin.debug:
+        msg: "{{ values_content.stdout_lines }}"
+
+    - name: Install Longhorn via Helm
+      ansible.builtin.command:
+        cmd: >
+          helm upgrade --install longhorn longhorn/longhorn
+          --namespace longhorn-system
+          --create-namespace
+          -f {{ longhorn_values_file }}
+      register: lh_helm_result
+      changed_when: "'has been upgraded' in lh_helm_result.stdout or 'has been deployed' in lh_helm_result.stdout"
+
+    - name: Wait for longhorn-driver-deployer rollout
+      ansible.builtin.command:
+        cmd: kubectl -n longhorn-system rollout status deploy/longhorn-driver-deployer --timeout=300s
+      changed_when: false
+
+    - name: Wait for longhorn-ui rollout
+      ansible.builtin.command:
+        cmd: kubectl -n longhorn-system rollout status deploy/longhorn-ui --timeout=300s
+      retries: 10
+      delay: 10
+      register: ui_result
+      until: ui_result.rc == 0
+      changed_when: false
+
+    - name: Wait for csi-attacher rollout
+      ansible.builtin.command:
+        cmd: kubectl -n longhorn-system rollout status deploy/csi-attacher --timeout=300s
+      retries: 10
+      delay: 10
+      register: attacher_result
+      until: attacher_result.rc == 0
+      changed_when: false
+
+    - name: Wait for csi-provisioner rollout
+      ansible.builtin.command:
+        cmd: kubectl -n longhorn-system rollout status deploy/csi-provisioner --timeout=300s
+      retries: 10
+      delay: 10
+      register: provisioner_result
+      until: provisioner_result.rc == 0
+      changed_when: false
+
+    - name: Wait for csi-resizer rollout
+      ansible.builtin.command:
+        cmd: kubectl -n longhorn-system rollout status deploy/csi-resizer --timeout=300s
+      retries: 10
+      delay: 10
+      register: resizer_result
+      until: resizer_result.rc == 0
+      changed_when: false
+
+    - name: Wait for csi-snapshotter rollout
+      ansible.builtin.command:
+        cmd: kubectl -n longhorn-system rollout status deploy/csi-snapshotter --timeout=300s
+      retries: 10
+      delay: 10
+      register: snapshotter_result
+      until: snapshotter_result.rc == 0
+      changed_when: false
+
+    - name: Create additional StorageClasses
+      when: lh_additional_storageclasses is defined and lh_additional_storageclasses | length > 0
+      block:
+        - name: Write StorageClass manifests
+          ansible.builtin.copy:
+            dest: "/tmp/{{ item.name }}.yaml"
+            mode: "0600"
+            content: |
+              apiVersion: storage.k8s.io/v1
+              kind: StorageClass
+              metadata:
+                name: {{ item.name }}
+              provisioner: driver.longhorn.io
+              allowVolumeExpansion: true
+              reclaimPolicy: Delete
+              volumeBindingMode: Immediate
+              parameters:
+                numberOfReplicas: "{{ item.num_replicas | default(3) }}"
+                staleReplicaTimeout: "30"
+                fromBackup: ""
+                fsType: "{{ item.fs_type }}"
+                dataLocality: "disabled"
+                unmapMarkSnapChainRemoved: "ignored"
+          loop: "{{ lh_additional_storageclasses }}"
+
+        - name: Apply additional StorageClasses
+          ansible.builtin.command:
+            cmd: kubectl apply -f /tmp/{{ item.name }}.yaml
+          loop: "{{ lh_additional_storageclasses }}"
+          register: sc_result
+          changed_when: "'created' in sc_result.stdout or 'configured' in sc_result.stdout"
+
+    - name: List all StorageClasses
+      ansible.builtin.command:
+        cmd: kubectl get storageclasses
+      changed_when: false
+      register: sc_list
+
+    - name: Show StorageClasses
+      ansible.builtin.debug:
+        msg: "{{ sc_list.stdout_lines }}"
+
+    - name: Create Longhorn ingress basic-auth secret
+      when: lh_create_ingress | default(false)
+      block:
+        - name: Generate htpasswd entry
+          ansible.builtin.command:
+            cmd: openssl passwd -apr1 {{ lh_password | quote }}
+          register: htpasswd_hash
+          changed_when: false
+          no_log: true
+
+        - name: Write longhorn-auth file
+          ansible.builtin.copy:
+            dest: /tmp/longhorn-auth
+            mode: "0600"
+            content: "{{ lh_user }}:{{ htpasswd_hash.stdout }}"
+          no_log: true
+
+        - name: Create longhorn-auth secret
+          ansible.builtin.command:
+            cmd: >
+              kubectl -n longhorn-system create secret generic longhorn-auth
+              --from-file=/tmp/longhorn-auth
+              --dry-run=client -o yaml
+          register: secret_yaml
+          changed_when: false
+
+        - name: Apply longhorn-auth secret
+          ansible.builtin.shell:
+            cmd: >
+              kubectl -n longhorn-system create secret generic longhorn-auth
+              --from-file=/tmp/longhorn-auth
+          register: secret_result
+          failed_when: secret_result.rc != 0 and 'already exists' not in secret_result.stderr
+          changed_when: secret_result.rc == 0
+
+        - name: Write Longhorn Ingress manifest
+          ansible.builtin.copy:
+            dest: /tmp/longhorn-ingress.yaml
+            mode: "0600"
+            content: |
+              apiVersion: networking.k8s.io/v1
+              kind: Ingress
+              metadata:
+                name: longhorn-ingress
+                namespace: longhorn-system
+                annotations:
+                  nginx.ingress.kubernetes.io/auth-type: basic
+                  nginx.ingress.kubernetes.io/ssl-redirect: 'false'
+                  nginx.ingress.kubernetes.io/auth-secret: longhorn-auth
+                  nginx.ingress.kubernetes.io/auth-realm: 'Authentication Required'
+                  nginx.ingress.kubernetes.io/proxy-body-size: 10000m
+              spec:
+                rules:
+                - host: "{{ lh_url }}"
+                  http:
+                    paths:
+                    - pathType: Prefix
+                      path: "/"
+                      backend:
+                        service:
+                          name: longhorn-frontend
+                          port:
+                            number: 80
+
+        - name: Apply Longhorn Ingress
+          ansible.builtin.command:
+            cmd: kubectl -n longhorn-system apply -f /tmp/longhorn-ingress.yaml
+          register: ingress_result
+          changed_when: "'created' in ingress_result.stdout or 'configured' in ingress_result.stdout"
+
+        - name: Show Longhorn ingresses
+          ansible.builtin.command:
+            cmd: kubectl -n longhorn-system get ingresses
+          changed_when: false
+          register: ingress_list
+
+        - name: Display Longhorn ingresses
+          ansible.builtin.debug:
+            msg: "{{ ingress_list.stdout_lines }}"
+
+    - name: Show Longhorn access info
+      ansible.builtin.debug:
+        msg:
+          - "Longhorn is ready."
+          - "UI URL: http://{{ lh_url }}"
+          - "To verify: kubectl get pods -n longhorn-system"

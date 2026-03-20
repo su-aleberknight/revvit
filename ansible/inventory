@@ -22,3 +22,8 @@ gpu28.lab.ai    ansible_host=172.24.131.213  ansible_user=root
 
 [vip]
 vip.lab.ai   ansible_host=172.24.131.100  ansible_user=root
+
+[homelab-vm-servers]
+node1 ansible_host=192.168.1.201 ansible_user=root
+node2 ansible_host=192.168.1.202 ansible_user=root
+node3 ansible_host=192.168.1.203 ansible_user=root

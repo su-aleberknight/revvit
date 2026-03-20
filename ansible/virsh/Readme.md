@@ -41,7 +41,7 @@ ansible-playbook -i inventory create-vm.yml
 | `vm_os_variant` | OS variant for virt-install | `sles15sp6` |
 | `vm_network` | Libvirt network name | `default` |
 | `vm_graphics` | Graphics type | `vnc` |
-| `vm_group` | Inventory group to create VMs for | `sles-servers` |
+| `vm_group` | Inventory group to create VMs for | `homelab-vm-servers` |
 
 ## What it does
 

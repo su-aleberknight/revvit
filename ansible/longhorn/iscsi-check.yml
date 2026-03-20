@@ -1,0 +1,17 @@
+---
+# Installs open-iscsi on SLES nodes, required by Longhorn for iSCSI volume support.
+#
+# Usage:
+#   ansible-playbook iscsi-check.yml -i ../../inventory
+
+- name: Install open-iscsi
+  hosts: rke2_bootstrap
+  become: true
+
+  tasks:
+    - name: Install open-iscsi (SLES only)
+      community.general.zypper:
+        name: open-iscsi
+        state: present
+        extra_args: "--auto-agree-with-licenses"
+      when: ansible_distribution == "SLES"
