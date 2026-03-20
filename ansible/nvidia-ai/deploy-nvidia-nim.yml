@@ -59,7 +59,7 @@
           --password {{ ngc_api_key | quote }}
           --force-update
       changed_when: false
-      no_log: true
+      no_log: false
       run_once: true
 
     - name: Update Helm repos
