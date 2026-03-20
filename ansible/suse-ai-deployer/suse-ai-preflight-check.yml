@@ -1,0 +1,151 @@
+---
+# Preflight check for SUSE AI Deployer.
+# Ensures global-suse-ai-vars.yaml and vars/deploy-suse-ai-deployer.yml exist
+# and that all required variables are populated, prompting for any that are empty.
+#
+# Run from the ansible/suse-ai-deployer directory:
+#   ansible-playbook suse-ai-preflight-check.yml
+
+- name: SUSE AI preflight — global vars
+  hosts: localhost
+  gather_facts: false
+  vars:
+    global_vars_example: "{{ playbook_dir }}/../../global-suse-ai-vars.yaml.example"
+    global_vars_file: "{{ playbook_dir }}/../../global-suse-ai-vars.yaml"
+
+  tasks:
+    - name: Check if global-suse-ai-vars.yaml exists
+      ansible.builtin.stat:
+        path: "{{ global_vars_file }}"
+      register: global_vars_stat
+
+    - name: Create global-suse-ai-vars.yaml from example if missing
+      ansible.builtin.copy:
+        src: "{{ global_vars_example }}"
+        dest: "{{ global_vars_file }}"
+        force: false
+      when: not global_vars_stat.stat.exists
+
+    - name: Load global vars
+      ansible.builtin.include_vars:
+        file: "{{ global_vars_file }}"
+
+    - name: Prompt for app_collection_username if empty
+      ansible.builtin.pause:
+        prompt: "Enter app_collection_username (Application Collection login)"
+      register: prompt_app_username
+      when: app_collection_username is not defined or app_collection_username | length == 0
+
+    - name: Set app_collection_username
+      ansible.builtin.set_fact:
+        app_collection_username: "{{ prompt_app_username.user_input }}"
+      when: prompt_app_username is not skipped
+
+    - name: Write app_collection_username to global vars file
+      ansible.builtin.lineinfile:
+        path: "{{ global_vars_file }}"
+        regexp: '^app_collection_username:'
+        line: 'app_collection_username: "{{ app_collection_username }}"'
+      when: prompt_app_username is not skipped
+
+    - name: Prompt for app_collection_password if empty
+      ansible.builtin.pause:
+        prompt: "Enter app_collection_password (Application Collection password)"
+        echo: false
+      register: prompt_app_password
+      when: app_collection_password is not defined or app_collection_password | length == 0
+
+    - name: Set app_collection_password
+      ansible.builtin.set_fact:
+        app_collection_password: "{{ prompt_app_password.user_input }}"
+      when: prompt_app_password is not skipped
+      no_log: true
+
+    - name: Write app_collection_password to global vars file
+      ansible.builtin.lineinfile:
+        path: "{{ global_vars_file }}"
+        regexp: '^app_collection_password:'
+        line: 'app_collection_password: "{{ app_collection_password }}"'
+      when: prompt_app_password is not skipped
+      no_log: true
+
+    - name: Prompt for suse_ai_deployer_version if empty (optional — press Enter to skip)
+      ansible.builtin.pause:
+        prompt: "Enter suse_ai_deployer_version (leave blank for latest)"
+      register: prompt_deployer_version
+      when: suse_ai_deployer_version is not defined or suse_ai_deployer_version | length == 0
+
+    - name: Write suse_ai_deployer_version to global vars file
+      ansible.builtin.lineinfile:
+        path: "{{ global_vars_file }}"
+        regexp: '^suse_ai_deployer_version:'
+        line: 'suse_ai_deployer_version: "{{ prompt_deployer_version.user_input }}"'
+      when: >
+        prompt_deployer_version is not skipped and
+        prompt_deployer_version.user_input | length > 0
+
+    - name: Global vars preflight complete
+      ansible.builtin.debug:
+        msg: "global-suse-ai-vars.yaml is populated."
+
+- name: SUSE AI preflight — deployer vars
+  hosts: localhost
+  gather_facts: false
+  vars:
+    deployer_vars_example: "{{ playbook_dir }}/vars/deploy-suse-ai-deployer.yml.example"
+    deployer_vars_file: "{{ playbook_dir }}/vars/deploy-suse-ai-deployer.yml"
+
+  tasks:
+    - name: Check if vars/deploy-suse-ai-deployer.yml exists
+      ansible.builtin.stat:
+        path: "{{ deployer_vars_file }}"
+      register: deployer_vars_stat
+
+    - name: Create vars/deploy-suse-ai-deployer.yml from example if missing
+      ansible.builtin.copy:
+        src: "{{ deployer_vars_example }}"
+        dest: "{{ deployer_vars_file }}"
+        force: false
+      when: not deployer_vars_stat.stat.exists
+
+    - name: Load deployer vars
+      ansible.builtin.include_vars:
+        file: "{{ deployer_vars_file }}"
+
+    - name: Prompt for webui_ingress_host if still set to example value
+      ansible.builtin.pause:
+        prompt: "Enter webui_ingress_host (e.g. webui.yourdomain.com)"
+      register: prompt_webui_host
+      when: >
+        webui_ingress_host is not defined or
+        webui_ingress_host | length == 0 or
+        webui_ingress_host == 'webui.example.com'
+
+    - name: Write webui_ingress_host to deployer vars file
+      ansible.builtin.lineinfile:
+        path: "{{ deployer_vars_file }}"
+        regexp: '^webui_ingress_host:'
+        line: 'webui_ingress_host: "{{ prompt_webui_host.user_input }}"'
+      when: prompt_webui_host is not skipped and prompt_webui_host.user_input | length > 0
+
+    - name: Prompt for owui_tls_email if empty
+      ansible.builtin.pause:
+        prompt: "Enter owui_tls_email (required for letsEncrypt TLS, press Enter to skip)"
+      register: prompt_tls_email
+      when: owui_tls_email is not defined or owui_tls_email | length == 0
+
+    - name: Write owui_tls_email to deployer vars file
+      ansible.builtin.lineinfile:
+        path: "{{ deployer_vars_file }}"
+        regexp: '^owui_tls_email:'
+        line: 'owui_tls_email: "{{ prompt_tls_email.user_input }}"'
+      when: >
+        prompt_tls_email is not skipped and
+        prompt_tls_email.user_input | length > 0
+
+    - name: Deployer vars preflight complete
+      ansible.builtin.debug:
+        msg:
+          - "vars/deploy-suse-ai-deployer.yml is populated."
+          - "All preflight checks passed. Run the following to deploy:"
+          - "  ansible-playbook deploy-suse-ai-deployer.yml -i ../../inventory"

@@ -1,0 +1,209 @@
+---
+# Deploys SUSE AI Deployer (Open WebUI + Ollama + optional Milvus/PyTorch)
+# onto an existing RKE2 cluster via Helm OCI chart.
+#
+# Usage:
+#   ansible-playbook deploy-suse-ai-deployer.yml -i ../../inventory
+#
+# Required vars file (vars/deploy-suse-ai-deployer.yml):
+#   cp vars/deploy-suse-ai-deployer.yml.example vars/deploy-suse-ai-deployer.yml
+#   # then edit vars/deploy-suse-ai-deployer.yml
+
+- name: Deploy SUSE AI Deployer
+  hosts: rke2_bootstrap
+  become: true
+  vars_files:
+    - vars/deploy-suse-ai-deployer.yml
+  vars:
+    overrides_file: /tmp/suse_ai_deployer_custom_overrides.yaml
+  environment:
+    KUBECONFIG: /etc/rancher/rke2/rke2.yaml
+    PATH: "/var/lib/rancher/rke2/bin:{{ ansible_env.PATH }}"
+
+  pre_tasks:
+    - name: Validate required variables
+      ansible.builtin.fail:
+        msg: |
+          ERROR: Missing required variables.
+
+          Usage:
+            ansible-playbook deploy-suse-ai-deployer.yml [-i ../../inventory]
+
+          Required vars file (vars/deploy-suse-ai-deployer.yml):
+            cp vars/deploy-suse-ai-deployer.yml.example vars/deploy-suse-ai-deployer.yml
+            # then edit vars/deploy-suse-ai-deployer.yml
+
+          Required variables:
+            app_collection_username: "<your-username>"
+            app_collection_password: "<your-password>"
+            webui_ingress_host: "webui.example.com"
+      when: >
+        app_collection_username is not defined or app_collection_username | length == 0 or
+        app_collection_password is not defined or app_collection_password | length == 0 or
+        webui_ingress_host is not defined or webui_ingress_host | length == 0
+      no_log: true
+
+  tasks:
+    - name: Log into Application Collection Helm registry
+      ansible.builtin.command:
+        cmd: >
+          helm registry login dp.apps.rancher.io/charts
+          -u {{ app_collection_username | quote }}
+          -p {{ app_collection_password | quote }}
+      changed_when: false
+      no_log: true
+      run_once: true
+
+    - name: Write custom overrides file
+      ansible.builtin.copy:
+        dest: "{{ overrides_file }}"
+        mode: "0600"
+        content: |
+          global:
+            imagePullSecrets:
+            - {{ image_pull_secret_name }}
+            tls:
+              source: {{ owui_tls_source }}
+          {% if owui_tls_source == 'letsEncrypt' %}
+              letsEncrypt:
+                email: {{ owui_tls_email }}
+                environment: {{ owui_tls_letsencrypt_environment }}
+                ingress:
+                  class: "{{ owui_tls_ingress_class }}"
+          {% else %}
+              additionalTrustedCerts: {{ owui_tls_additional_trusted_certs | lower }}
+          {% endif %}
+
+          open-webui:
+            persistence:
+              enabled: true
+              storageClass: {{ storage_class_name }}
+            ingress:
+              class: nginx
+              host: {{ webui_ingress_host }}
+            extraEnvVars:
+          {% if suse_private_ai_milvus_enabled %}
+              - name: VECTOR_DB
+                value: "milvus"
+              - name: MILVUS_URI
+                value: "http://milvus.{{ suse_ai_namespace }}.svc.cluster.local:19530"
+              - name: RAG_EMBEDDING_MODEL
+                value: "sentence-transformers/all-MiniLM-L6-v2"
+          {% endif %}
+
+          ollama:
+            ollama:
+              models:
+                pull:
+          {% for model in ollama_models %}
+                  - "{{ model }}"
+          {% endfor %}
+              gpu:
+                enabled: {{ ollama_gpu_enabled | lower }}
+                type: {{ ollama_gpu_type }}
+                number: {{ ollama_gpu_number }}
+                nvidiaResource: {{ ollama_gpu_nvidia_resource }}
+            runtimeClassName: {{ ollama_runtimeclassname }}
+
+          milvus:
+            enabled: {{ suse_private_ai_milvus_enabled | lower }}
+            cluster:
+              enabled: {{ milvus_cluster_enabled | lower }}
+            etcd:
+              enabled: {{ milvus_etcd_enabled | lower }}
+              replicaCount: {{ milvus_etcd_replica_count }}
+              persistence:
+                size: {{ milvus_etcd_volume_size }}
+                storageClassName: {{ storage_class_name }}
+              resources:
+                requests:
+                  memory: {{ milvus_etcd_memory }}
+            minio:
+              mode: {{ milvus_minio_mode }}
+              replicas: {{ milvus_minio_replica_count }}
+              rootUser: {{ milvus_minio_root_user }}
+              rootPassword: {{ milvus_minio_root_user_password }}
+              persistence:
+                storageClass: {{ storage_class_name }}
+            kafka:
+              enabled: {{ milvus_kafka_enabled | lower }}
+              persistence:
+                storageClassName: {{ storage_class_name }}
+
+          pytorch:
+            enabled: {{ suse_private_ai_pytorch_enabled | lower }}
+            gpu:
+              enabled: {{ pytorch_gpu_enabled | lower }}
+              type: {{ pytorch_gpu_type }}
+              number: {{ pytorch_gpu_number }}
+            runtimeClassName: {{ pytorch_runtimeclassname }}
+            persistence:
+              enabled: true
+              size: {{ pytorch_volume_size }}
+              storageClassName: {{ storage_class_name }}
+      run_once: true
+
+    - name: Display custom overrides file
+      ansible.builtin.command:
+        cmd: cat {{ overrides_file }}
+      changed_when: false
+      register: overrides_content
+      run_once: true
+
+    - name: Show custom overrides
+      ansible.builtin.debug:
+        msg: "{{ overrides_content.stdout_lines }}"
+      run_once: true
+
+    - name: Deploy SUSE AI Deployer via Helm
+      ansible.builtin.command:
+        cmd: >
+          helm upgrade --install suse-private-ai
+          -n {{ suse_ai_namespace }} --create-namespace
+          -f {{ overrides_file }}
+          {% if suse_ai_deployer_version | length > 0 %}--version {{ suse_ai_deployer_version | quote }}{% endif %}
+          oci://dp.apps.rancher.io/charts/suse-ai-deployer
+      register: helm_result
+      changed_when: "'has been upgraded' in helm_result.stdout or 'has been deployed' in helm_result.stdout"
+      run_once: true
+
+    - name: Wait for Ollama rollout
+      ansible.builtin.command:
+        cmd: kubectl -n {{ suse_ai_namespace }} rollout status deploy/{{ suse_ai_namespace }}-ollama --timeout=600s
+      changed_when: false
+      run_once: true
+
+    - name: Wait for Open WebUI Redis rollout
+      ansible.builtin.command:
+        cmd: kubectl -n {{ suse_ai_namespace }} rollout status deploy/open-webui-redis --timeout=300s
+      changed_when: false
+      run_once: true
+
+    - name: Wait for Milvus standalone rollout
+      ansible.builtin.command:
+        cmd: kubectl -n {{ suse_ai_namespace }} rollout status deploy/{{ suse_ai_namespace }}-milvus-standalone --timeout=300s
+      changed_when: false
+      run_once: true
+      when: suse_private_ai_milvus_enabled | bool
+
+    - name: Wait for Milvus MinIO rollout
+      ansible.builtin.command:
+        cmd: kubectl -n {{ suse_ai_namespace }} rollout status deploy/{{ suse_ai_namespace }}-minio --timeout=300s
+      changed_when: false
+      run_once: true
+      when: suse_private_ai_milvus_enabled | bool
+
+    - name: Wait for PyTorch rollout
+      ansible.builtin.command:
+        cmd: kubectl -n {{ suse_ai_namespace }} rollout status deploy/pytorch --timeout=300s
+      changed_when: false
+      run_once: true
+      when: suse_private_ai_pytorch_enabled | bool
+
+    - name: Show deployment info
+      ansible.builtin.debug:
+        msg:
+          - "SUSE AI Deployer is ready."
+          - "Open WebUI URL: https://{{ webui_ingress_host }}"
+          - "To verify: kubectl get pods -n {{ suse_ai_namespace }}"
+      run_once: true

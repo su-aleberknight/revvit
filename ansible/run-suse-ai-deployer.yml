@@ -1,0 +1,9 @@
+---
+# Orchestrates the full SUSE AI Deployer installation.
+# Runs preflight checks first, then deploys SUSE AI onto the cluster.
+#
+# Usage:
+#   ansible-playbook run-suse-ai-deployer.yml -i inventory
+
+- import_playbook: suse-ai-deployer/suse-ai-preflight-check.yml
+- import_playbook: suse-ai-deployer/deploy-suse-ai-deployer.yml

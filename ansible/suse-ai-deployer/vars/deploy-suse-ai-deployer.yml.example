@@ -1,0 +1,59 @@
+---
+# Note: suse_ai_namespace, image_pull_secret_name, storage_class_name,
+# app_collection_username, app_collection_password, and suse_ai_deployer_version
+# are defined in ansible/global-suse-ai-vars.yaml
+
+# -------------------------------------------------------------------
+# Open WebUI / Ingress
+# -------------------------------------------------------------------
+webui_ingress_host: "webui.example.com"
+
+# TLS source: letsEncrypt | secret | rancher
+owui_tls_source: "secret"
+owui_tls_additional_trusted_certs: false
+
+# Required when owui_tls_source is letsEncrypt
+owui_tls_email: ""
+owui_tls_letsencrypt_environment: "production"
+owui_tls_ingress_class: "nginx"
+
+# -------------------------------------------------------------------
+# Ollama
+# -------------------------------------------------------------------
+ollama_models:
+  - "llama3.2"
+  - "gemma:2b"
+# Add more models as needed:
+# - "mistral"
+
+ollama_gpu_enabled: true
+ollama_gpu_type: "nvidia"
+ollama_gpu_number: 1
+ollama_gpu_nvidia_resource: "nvidia.com/gpu"
+ollama_runtimeclassname: "nvidia"
+
+# -------------------------------------------------------------------
+# Milvus (vector DB)
+# -------------------------------------------------------------------
+suse_private_ai_milvus_enabled: false
+milvus_cluster_enabled: false
+milvus_etcd_enabled: true
+milvus_etcd_replica_count: 1
+milvus_etcd_volume_size: "10Gi"
+milvus_etcd_memory: "256Mi"
+milvus_minio_mode: "standalone"
+milvus_minio_replica_count: 1
+milvus_minio_root_user: "minioadmin"
+milvus_minio_root_user_password: "changeme"
+milvus_minio_volume_size: "10Gi"
+milvus_kafka_enabled: false
+
+# -------------------------------------------------------------------
+# PyTorch
+# -------------------------------------------------------------------
+suse_private_ai_pytorch_enabled: false
+pytorch_gpu_enabled: true
+pytorch_gpu_type: "nvidia"
+pytorch_gpu_number: 1
+pytorch_runtimeclassname: "nvidia"
+pytorch_volume_size: "10Gi"

@@ -1,0 +1,21 @@
+---
+# Global variables shared across SUSE AI plays.
+# Copy to global-suse-ai-vars.yaml and edit before running any suse-ai playbooks.
+#
+#   cp global-suse-ai-vars.yaml.example global-suse-ai-vars.yaml
+
+# SUSE AI Deployer Helm chart version. Leave empty to install the latest.
+suse_ai_deployer_version: ""
+
+# Kubernetes namespace to deploy SUSE AI into
+suse_ai_namespace: "suse-private-ai"
+
+# Name of the image pull secret for the Application Collection
+image_pull_secret_name: "application-collection"
+
+# StorageClass to use for persistent volumes
+storage_class_name: "longhorn"
+
+# Application Collection registry credentials
+app_collection_username: ""
+app_collection_password: ""
