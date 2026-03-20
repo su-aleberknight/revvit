@@ -23,6 +23,12 @@ gpu28.lab.ai    ansible_host=172.24.131.213  ansible_user=root
 [vip]
 vip.lab.ai   ansible_host=172.24.131.100  ansible_user=root
 
+[rke2-storage-nodes]
+u31-ranch.lab.ai    ansible_host=172.24.131.72  ansible_user=root
+u28-29-ranch.lab.ai ansible_host=172.24.131.73  ansible_user=root
+u25-26-ranch.lab.ai ansible_host=172.24.131.75  ansible_user=root
+
+
 [homelab-vm-servers]
 node1 ansible_host=192.168.1.201 ansible_user=root
 node2 ansible_host=192.168.1.202 ansible_user=root
