@@ -22,6 +22,20 @@
     PATH: "/var/lib/rancher/rke2/bin:{{ ansible_env.PATH }}"
 
   pre_tasks:
+    - name: Prompt for ngc_api_key if empty
+      ansible.builtin.pause:
+        prompt: "Enter ngc_api_key (NGC API key for nvcr.io)"
+        echo: false
+      register: prompt_ngc_key
+      when: ngc_api_key is not defined or ngc_api_key | length == 0
+      no_log: true
+
+    - name: Set ngc_api_key from prompt
+      ansible.builtin.set_fact:
+        ngc_api_key: "{{ prompt_ngc_key.user_input }}"
+      when: prompt_ngc_key is not skipped
+      no_log: true
+
     - name: Validate required variables
       ansible.builtin.fail:
         msg: |
