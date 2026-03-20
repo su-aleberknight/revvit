@@ -119,7 +119,8 @@
     - name: Deploy NIM Operator
       ansible.builtin.command:
         cmd: >
-          helm upgrade --install nim-operator nvidia/nim-operator
+          helm upgrade --install nim-operator
+          oci://nvcr.io/nvidia/cloud-native/nim-operator
           --namespace {{ nvidia_ai_namespace | quote }}
           {% if nim_operator_version | length > 0 %}--version {{ nim_operator_version | quote }}{% endif %}
       register: nim_operator_result
