@@ -95,7 +95,7 @@
     - name: Annotate nodes with tagged disk config
       ansible.builtin.shell:
         cmd: >
-          kubectl annotate node {{ inventory_hostname }}
+          kubectl annotate node {{ inventory_hostname_short }}
           node.longhorn.io/default-disks-config="$(cat /tmp/longhorn-disk-config.json | tr -d '\n')"
           --overwrite
       delegate_to: "{{ groups['rke2_bootstrap'][0] }}"
@@ -107,7 +107,7 @@
     - name: Label nodes for custom disk config
       ansible.builtin.command:
         cmd: >
-          kubectl label node {{ inventory_hostname }}
+          kubectl label node {{ inventory_hostname_short }}
           node.longhorn.io/create-default-disk=config
           --overwrite
       delegate_to: "{{ groups['rke2_bootstrap'][0] }}"
@@ -124,7 +124,7 @@
     - name: Show disk configuration
       ansible.builtin.debug:
         msg:
-          - "NVMe disks configured on {{ inventory_hostname }} with tag '{{ longhorn_disk_tag }}':"
+          - "NVMe disks configured on {{ inventory_hostname_short }} with tag '{{ longhorn_disk_tag }}':"
           - "  {{ longhorn_extra_disks[0].device }} -> {{ longhorn_extra_disks[0].mount }}"
           - "  {{ longhorn_extra_disks[1].device }} -> {{ longhorn_extra_disks[1].mount }}"
 
