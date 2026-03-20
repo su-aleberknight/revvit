@@ -7,7 +7,7 @@
 nim_operator_version: ""
 
 # NIM Operator Helm registry
-nim_operator_helm_registry: "https://helm.ngc.nvidia.com/nim-operator"
+nim_operator_helm_registry: "https://helm.ngc.nvidia.com/nvidia"
 
 # NIM LLM model to deploy
 # Examples: meta/llama-3.1-8b-instruct, mistralai/mistral-7b-instruct-v0.3
