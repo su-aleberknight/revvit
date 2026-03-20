@@ -13,7 +13,7 @@
 # in vars/install-longhorn.yml
 
 - name: Install Longhorn
-  hosts: rke2_bootstrap
+  hosts: rke2-storage-nodes
   become: true
   vars_files:
     - vars/install-longhorn.yml
