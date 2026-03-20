@@ -68,7 +68,7 @@
     - name: Add NGC Helm repo
       ansible.builtin.command:
         cmd: >
-          helm repo add nvidia {{ nim_operator_helm_registry }}
+          helm repo add nvidia {{ ngc_helm_registry }}
           --username $oauthtoken
           --password {{ ngc_api_key | quote }}
           --force-update
