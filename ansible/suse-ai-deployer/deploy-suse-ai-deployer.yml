@@ -80,6 +80,21 @@
       no_log: true
       run_once: true
 
+    - name: Check if Ollama deployment exists
+      ansible.builtin.command:
+        cmd: kubectl get deployment suse-private-ai-ollama -n {{ suse_ai_namespace | quote }}
+      register: ollama_exists
+      failed_when: false
+      changed_when: false
+      run_once: true
+
+    - name: Restart Ollama deployment if it existed before secret was created
+      ansible.builtin.command:
+        cmd: kubectl rollout restart deployment/suse-private-ai-ollama -n {{ suse_ai_namespace | quote }}
+      when: ollama_exists.rc == 0
+      changed_when: true
+      run_once: true
+
     - name: Write custom overrides file
       ansible.builtin.copy:
         dest: "{{ overrides_file }}"
