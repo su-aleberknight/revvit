@@ -101,7 +101,7 @@
           --dry-run=client -o yaml | kubectl apply -f -
       register: secret_result
       changed_when: "'created' in secret_result.stdout or 'configured' in secret_result.stdout"
-      no_log: true
+      no_log: false
       run_once: true
 
     - name: Create NVAIE license secret
