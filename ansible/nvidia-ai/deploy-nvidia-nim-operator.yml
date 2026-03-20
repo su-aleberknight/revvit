@@ -3,6 +3,8 @@
 # Requires an NVIDIA AI Enterprise (NVAIE) subscription — the nvapi- key
 # from api.nvidia.com is used for the NVAIE license secret.
 #
+# Set nim_operator_enabled: false in vars/deploy-nvidia-nim-operator.yml to skip.
+#
 # Usage:
 #   ansible-playbook deploy-nvidia-nim-operator.yml -i ../../inventory
 #
@@ -22,12 +24,17 @@
     PATH: "/var/lib/rancher/rke2/bin:{{ ansible_env.PATH }}"
 
   pre_tasks:
+    - name: Skip NIM Operator deployment
+      ansible.builtin.debug:
+        msg: "NIM Operator skipped — set nim_operator_enabled: true in vars/deploy-nvidia-nim-operator.yml when NVAIE subscription is active."
+      when: not nim_operator_enabled | bool
+
     - name: Prompt for ngc_api_key if empty
       ansible.builtin.pause:
         prompt: "Enter ngc_api_key (NGC API key for nvcr.io)"
         echo: false
       register: prompt_ngc_key
-      when: ngc_api_key is not defined or ngc_api_key | length == 0
+      when: nim_operator_enabled | bool and (ngc_api_key is not defined or ngc_api_key | length == 0)
       no_log: true
 
     - name: Set ngc_api_key from prompt
@@ -41,7 +48,7 @@
         prompt: "Enter nvaie_api_key (nvapi- key from api.nvidia.com for NVAIE licensing)"
         echo: false
       register: prompt_nvaie_key
-      when: nvaie_api_key is not defined or nvaie_api_key | length == 0
+      when: nim_operator_enabled | bool and (nvaie_api_key is not defined or nvaie_api_key | length == 0)
       no_log: true
 
     - name: Set nvaie_api_key from prompt
@@ -63,8 +70,9 @@
             ngc_api_key: "<your-ngc-api-key>"
             nvaie_api_key: "<your-nvapi-key>"
       when: >
+        nim_operator_enabled | bool and (
         ngc_api_key is not defined or ngc_api_key | length == 0 or
-        nvaie_api_key is not defined or nvaie_api_key | length == 0
+        nvaie_api_key is not defined or nvaie_api_key | length == 0)
       no_log: true
 
   tasks:
@@ -77,6 +85,7 @@
       changed_when: false
       no_log: true
       run_once: true
+      when: nim_operator_enabled | bool
 
     - name: Create namespace
       ansible.builtin.command:
@@ -85,6 +94,7 @@
       failed_when: ns_result.rc != 0 and 'already exists' not in ns_result.stderr
       changed_when: ns_result.rc == 0
       run_once: true
+      when: nim_operator_enabled | bool
 
     - name: Create NVAIE license secret
       ansible.builtin.shell:
@@ -97,6 +107,7 @@
       changed_when: "'created' in nvaie_secret_result.stdout or 'configured' in nvaie_secret_result.stdout"
       no_log: true
       run_once: true
+      when: nim_operator_enabled | bool
 
     - name: Deploy NIM Operator
       ansible.builtin.command:
@@ -108,12 +119,14 @@
       register: nim_operator_result
       changed_when: "'has been upgraded' in nim_operator_result.stdout or 'has been deployed' in nim_operator_result.stdout"
       run_once: true
+      when: nim_operator_enabled | bool
 
     - name: Wait for NIM Operator rollout
       ansible.builtin.command:
         cmd: kubectl -n {{ nvidia_ai_namespace }} rollout status deploy/nim-operator --timeout=300s
       changed_when: false
       run_once: true
+      when: nim_operator_enabled | bool
 
     - name: Show NIM Operator deployment info
       ansible.builtin.debug:
@@ -121,3 +134,4 @@
           - "NVIDIA NIM Operator is ready."
           - "To verify: kubectl get pods -n {{ nvidia_ai_namespace }}"
       run_once: true
+      when: nim_operator_enabled | bool
