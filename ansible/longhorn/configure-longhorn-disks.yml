@@ -1,0 +1,169 @@
+---
+# Formats NVMe disks, registers them as tagged Longhorn disks, and creates
+# a dedicated 'longhorn-nvidia' StorageClass that targets only these disks.
+#
+# Storage layout:
+#   longhorn         (default SC) -> /var/lib/longhorn        (existing disks, SUSE AI)
+#   longhorn-nvidia  (new SC)     -> nvme2n1 + nvme3n1        (NVIDIA AI workloads)
+#
+# Disks configured: nvme2n1, nvme3n1 (same layout on all storage nodes)
+# Filesystem: xfs (recommended for Longhorn)
+# Mount points: /var/lib/longhorn/nvme2n1, /var/lib/longhorn/nvme3n1
+# Disk tag: nvme  (used by longhorn-nvidia StorageClass diskSelector)
+#
+# Usage:
+#   ansible-playbook longhorn/configure-longhorn-disks.yml -i ../inventory
+#
+# WARNING: This will format the listed disks. Ensure they have no data.
+
+- name: Configure NVMe disks for Longhorn
+  hosts: rke2-storage-nodes
+  become: true
+  vars:
+    longhorn_extra_disks:
+      - device: /dev/nvme2n1
+        mount: /var/lib/longhorn/nvme2n1
+        name: nvme2n1
+      - device: /dev/nvme3n1
+        mount: /var/lib/longhorn/nvme3n1
+        name: nvme3n1
+    longhorn_disk_tag: nvme
+
+  tasks:
+    - name: Install xfsprogs
+      ansible.builtin.command:
+        cmd: zypper install -y --auto-agree-with-licenses xfsprogs
+      changed_when: false
+
+    - name: Check if disk is already formatted
+      ansible.builtin.command:
+        cmd: blkid -o value -s TYPE {{ item.device }}
+      register: blkid_result
+      changed_when: false
+      failed_when: false
+      loop: "{{ longhorn_extra_disks }}"
+      loop_control:
+        label: "{{ item.device }}"
+
+    - name: Format disks as xfs (skip if already formatted)
+      ansible.builtin.command:
+        cmd: mkfs.xfs -f {{ item.item.device }}
+      when: item.stdout == ""
+      loop: "{{ blkid_result.results }}"
+      loop_control:
+        label: "{{ item.item.device }}"
+
+    - name: Create mount point directories
+      ansible.builtin.file:
+        path: "{{ item.mount }}"
+        state: directory
+        mode: "0750"
+      loop: "{{ longhorn_extra_disks }}"
+      loop_control:
+        label: "{{ item.mount }}"
+
+    - name: Get disk UUIDs
+      ansible.builtin.command:
+        cmd: blkid -o value -s UUID {{ item.device }}
+      register: uuid_result
+      changed_when: false
+      loop: "{{ longhorn_extra_disks }}"
+      loop_control:
+        label: "{{ item.device }}"
+
+    - name: Mount disks and persist via fstab
+      ansible.posix.mount:
+        path: "{{ item.item.mount }}"
+        src: "UUID={{ item.stdout }}"
+        fstype: xfs
+        opts: defaults,noatime
+        state: mounted
+      loop: "{{ uuid_result.results }}"
+      loop_control:
+        label: "{{ item.item.mount }}"
+
+    - name: Write disk annotation JSON to temp file
+      ansible.builtin.copy:
+        dest: /tmp/longhorn-disk-config.json
+        mode: "0600"
+        content: |
+          [
+            {"name":"{{ longhorn_extra_disks[0].name }}","path":"{{ longhorn_extra_disks[0].mount }}","allowScheduling":true,"tags":["{{ longhorn_disk_tag }}"]},
+            {"name":"{{ longhorn_extra_disks[1].name }}","path":"{{ longhorn_extra_disks[1].mount }}","allowScheduling":true,"tags":["{{ longhorn_disk_tag }}"]}
+          ]
+
+    - name: Annotate nodes with tagged disk config
+      ansible.builtin.shell:
+        cmd: >
+          kubectl annotate node {{ inventory_hostname }}
+          node.longhorn.io/default-disks-config="$(cat /tmp/longhorn-disk-config.json | tr -d '\n')"
+          --overwrite
+      delegate_to: "{{ groups['rke2_bootstrap'][0] }}"
+      changed_when: true
+      environment:
+        KUBECONFIG: /etc/rancher/rke2/rke2.yaml
+        PATH: "/var/lib/rancher/rke2/bin:{{ ansible_env.PATH }}"
+
+    - name: Label nodes for custom disk config
+      ansible.builtin.command:
+        cmd: >
+          kubectl label node {{ inventory_hostname }}
+          node.longhorn.io/create-default-disk=config
+          --overwrite
+      delegate_to: "{{ groups['rke2_bootstrap'][0] }}"
+      changed_when: true
+      environment:
+        KUBECONFIG: /etc/rancher/rke2/rke2.yaml
+        PATH: "/var/lib/rancher/rke2/bin:{{ ansible_env.PATH }}"
+
+    - name: Clean up temp annotation file
+      ansible.builtin.file:
+        path: /tmp/longhorn-disk-config.json
+        state: absent
+
+    - name: Show disk configuration
+      ansible.builtin.debug:
+        msg:
+          - "NVMe disks configured on {{ inventory_hostname }} with tag '{{ longhorn_disk_tag }}':"
+          - "  {{ longhorn_extra_disks[0].device }} -> {{ longhorn_extra_disks[0].mount }}"
+          - "  {{ longhorn_extra_disks[1].device }} -> {{ longhorn_extra_disks[1].mount }}"
+
+- name: Create longhorn-nvidia StorageClass
+  hosts: rke2_bootstrap
+  become: true
+  run_once: true
+  environment:
+    KUBECONFIG: /etc/rancher/rke2/rke2.yaml
+    PATH: "/var/lib/rancher/rke2/bin:{{ ansible_env.PATH }}"
+
+  tasks:
+    - name: Apply longhorn-nvidia StorageClass
+      ansible.builtin.shell:
+        cmd: kubectl apply -f -
+        stdin: |
+          kind: StorageClass
+          apiVersion: storage.k8s.io/v1
+          metadata:
+            name: longhorn-nvidia
+            annotations:
+              storageclass.kubernetes.io/is-default-class: "false"
+          provisioner: driver.longhorn.io
+          allowVolumeExpansion: true
+          reclaimPolicy: Delete
+          volumeBindingMode: Immediate
+          parameters:
+            numberOfReplicas: "3"
+            staleReplicaTimeout: "2880"
+            fromBackup: ""
+            fsType: "xfs"
+            diskSelector: "nvme"
+      register: sc_result
+      changed_when: "'created' in sc_result.stdout or 'configured' in sc_result.stdout"
+
+    - name: Show StorageClass status
+      ansible.builtin.debug:
+        msg:
+          - "StorageClass 'longhorn-nvidia' is ready."
+          - "  diskSelector: nvme  (targets nvme2n1 and nvme3n1 only)"
+          - "  Default 'longhorn' SC continues to use /var/lib/longhorn (SUSE AI)"
+          - "  Set storage_class_name: longhorn-nvidia in nvidia-ai/vars/nvidia-global.yml"

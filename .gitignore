@@ -1,0 +1,14 @@
+# Ansible vars files containing secrets — never commit these
+ansible/nvidia-ai/vars/nvidia-global.yml
+ansible/nvidia-ai/vars/deploy-nvidia-nim.yml
+ansible/nvidia-ai/vars/deploy-nvidia-nemo.yml
+ansible/nvidia-ai/vars/deploy-nvidia-riva.yml
+ansible/nvidia-ai/vars/deploy-nvidia-triton.yml
+ansible/nvidia-ai/vars/deploy-nvidia-rapids.yml
+ansible/suse-ai-deployer/vars/deploy-suse-ai-deployer.yml
+ansible/global-suse-ai-vars.yaml
+ansible/longhorn/vars/install-longhorn.yml
+
+# Keep .example files
+!ansible/**/*.example
+!ansible/**/*.yml.example

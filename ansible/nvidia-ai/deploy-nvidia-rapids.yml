@@ -1,0 +1,128 @@
+---
+# Deploys NVIDIA RAPIDS (GPU-accelerated data science and ML).
+#
+# Usage:
+#   ansible-playbook deploy-nvidia-rapids.yml -i ../../inventory
+#
+# Required vars files:
+#   cp vars/nvidia-global.yml.example vars/nvidia-global.yml
+#   cp vars/deploy-nvidia-rapids.yml.example vars/deploy-nvidia-rapids.yml
+#   # then edit both files
+
+- name: Deploy NVIDIA RAPIDS
+  hosts: rke2_bootstrap
+  become: true
+  vars_files:
+    - vars/nvidia-global.yml
+    - vars/deploy-nvidia-rapids.yml
+  vars:
+    overrides_file: /tmp/nvidia-rapids-overrides.yaml
+  environment:
+    KUBECONFIG: /etc/rancher/rke2/rke2.yaml
+    PATH: "/var/lib/rancher/rke2/bin:{{ ansible_env.PATH }}"
+
+  pre_tasks:
+    - name: Validate required variables
+      ansible.builtin.fail:
+        msg: |
+          ERROR: Missing required variables.
+
+          Required vars files:
+            cp vars/nvidia-global.yml.example vars/nvidia-global.yml
+            cp vars/deploy-nvidia-rapids.yml.example vars/deploy-nvidia-rapids.yml
+            # then edit both files
+
+          Required variables:
+            ngc_api_key: "<your-ngc-api-key>"
+            rapids_ingress_host: "rapids.yourdomain.com"
+      when: >
+        ngc_api_key is not defined or ngc_api_key | length == 0 or
+        rapids_ingress_host is not defined or rapids_ingress_host == 'rapids.example.com'
+      no_log: true
+
+  tasks:
+    - name: Add NGC Helm repo
+      ansible.builtin.command:
+        cmd: helm repo add nvidia {{ ngc_helm_registry }} --force-update
+      changed_when: false
+      run_once: true
+
+    - name: Update Helm repos
+      ansible.builtin.command:
+        cmd: helm repo update
+      changed_when: false
+      run_once: true
+
+    - name: Create namespace
+      ansible.builtin.command:
+        cmd: kubectl create namespace {{ nvidia_ai_namespace | quote }}
+      register: ns_result
+      failed_when: ns_result.rc != 0 and 'already exists' not in ns_result.stderr
+      changed_when: ns_result.rc == 0
+      run_once: true
+
+    - name: Create NGC image pull secret
+      ansible.builtin.shell:
+        cmd: >
+          kubectl create secret docker-registry {{ ngc_pull_secret_name | quote }}
+          --docker-server=nvcr.io
+          --docker-username=oauthtoken
+          --docker-password={{ ngc_api_key | quote }}
+          --namespace={{ nvidia_ai_namespace | quote }}
+          --dry-run=client -o yaml | kubectl apply -f -
+      register: secret_result
+      changed_when: "'created' in secret_result.stdout or 'configured' in secret_result.stdout"
+      no_log: true
+      run_once: true
+
+    - name: Write RAPIDS values file
+      ansible.builtin.copy:
+        dest: "{{ overrides_file }}"
+        mode: "0600"
+        content: |
+          image:
+            repository: nvcr.io/nvidia/rapidsai/notebooks
+            tag: {{ rapids_image_tag }}
+            pullSecrets:
+              - {{ ngc_pull_secret_name }}
+          replicaCount: {{ rapids_replicas }}
+          resources:
+            limits:
+              nvidia.com/gpu: {{ rapids_gpu_count }}
+          runtimeClassName: {{ rapids_runtimeclassname }}
+          jupyter:
+            enabled: {{ rapids_jupyter_enabled | lower }}
+          ingress:
+            enabled: true
+            className: nginx
+            host: {{ rapids_ingress_host }}
+          persistence:
+            enabled: true
+            size: {{ rapids_pvc_size }}
+            storageClass: {{ storage_class_name }}
+      run_once: true
+
+    - name: Deploy RAPIDS
+      ansible.builtin.command:
+        cmd: >
+          helm upgrade --install rapids nvidia/rapids
+          --namespace {{ nvidia_ai_namespace | quote }}
+          -f {{ overrides_file }}
+          {% if rapids_version | length > 0 %}--version {{ rapids_version | quote }}{% endif %}
+      register: rapids_result
+      changed_when: "'has been upgraded' in rapids_result.stdout or 'has been deployed' in rapids_result.stdout"
+      run_once: true
+
+    - name: Wait for RAPIDS rollout
+      ansible.builtin.command:
+        cmd: kubectl -n {{ nvidia_ai_namespace }} rollout status deploy/rapids --timeout=300s
+      changed_when: false
+      run_once: true
+
+    - name: Show RAPIDS deployment info
+      ansible.builtin.debug:
+        msg:
+          - "NVIDIA RAPIDS is ready."
+          - "JupyterLab URL: https://{{ rapids_ingress_host }}"
+          - "To verify: kubectl get pods -n {{ nvidia_ai_namespace }}"
+      run_once: true

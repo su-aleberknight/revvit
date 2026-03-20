@@ -1,0 +1,26 @@
+---
+# NIM Operator and NIM microservice deployment vars.
+# Note: ngc_api_key, nvidia_ai_namespace, ngc_pull_secret_name, storage_class_name
+# are defined in vars/nvidia-global.yml
+
+# NIM Operator Helm chart version. Leave empty for latest.
+nim_operator_version: ""
+
+# NIM Operator Helm registry
+nim_operator_helm_registry: "https://helm.ngc.nvidia.com/nim-operator"
+
+# NIM LLM model to deploy
+# Examples: meta/llama-3.1-8b-instruct, mistralai/mistral-7b-instruct-v0.3
+nim_model: "meta/llama-3.1-8b-instruct"
+
+# NIM chart version. Leave empty for latest.
+nim_version: ""
+
+# GPU resource count for NIM inference pod
+nim_gpu_count: 1
+
+# Persistent volume size for model storage
+nim_model_pvc_size: "50Gi"
+
+# RuntimeClass for GPU workloads
+nim_runtimeclassname: "nvidia"

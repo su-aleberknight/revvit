@@ -1,0 +1,136 @@
+---
+# Deploys NVIDIA Riva speech AI services (ASR, TTS, NLP).
+#
+# Usage:
+#   ansible-playbook deploy-nvidia-riva.yml -i ../../inventory
+#
+# Required vars files:
+#   cp vars/nvidia-global.yml.example vars/nvidia-global.yml
+#   cp vars/deploy-nvidia-riva.yml.example vars/deploy-nvidia-riva.yml
+#   # then edit both files
+
+- name: Deploy NVIDIA Riva
+  hosts: rke2_bootstrap
+  become: true
+  vars_files:
+    - vars/nvidia-global.yml
+    - vars/deploy-nvidia-riva.yml
+  vars:
+    overrides_file: /tmp/nvidia-riva-overrides.yaml
+  environment:
+    KUBECONFIG: /etc/rancher/rke2/rke2.yaml
+    PATH: "/var/lib/rancher/rke2/bin:{{ ansible_env.PATH }}"
+
+  pre_tasks:
+    - name: Validate required variables
+      ansible.builtin.fail:
+        msg: |
+          ERROR: Missing required variables.
+
+          Required vars files:
+            cp vars/nvidia-global.yml.example vars/nvidia-global.yml
+            cp vars/deploy-nvidia-riva.yml.example vars/deploy-nvidia-riva.yml
+            # then edit both files
+
+          Required variables:
+            ngc_api_key: "<your-ngc-api-key>"
+            riva_ingress_host: "riva.yourdomain.com"
+      when: >
+        ngc_api_key is not defined or ngc_api_key | length == 0 or
+        riva_ingress_host is not defined or riva_ingress_host == 'riva.example.com'
+      no_log: true
+
+  tasks:
+    - name: Add NGC Helm repo
+      ansible.builtin.command:
+        cmd: helm repo add nvidia {{ ngc_helm_registry }} --force-update
+      changed_when: false
+      run_once: true
+
+    - name: Update Helm repos
+      ansible.builtin.command:
+        cmd: helm repo update
+      changed_when: false
+      run_once: true
+
+    - name: Create namespace
+      ansible.builtin.command:
+        cmd: kubectl create namespace {{ nvidia_ai_namespace | quote }}
+      register: ns_result
+      failed_when: ns_result.rc != 0 and 'already exists' not in ns_result.stderr
+      changed_when: ns_result.rc == 0
+      run_once: true
+
+    - name: Create NGC image pull secret
+      ansible.builtin.shell:
+        cmd: >
+          kubectl create secret docker-registry {{ ngc_pull_secret_name | quote }}
+          --docker-server=nvcr.io
+          --docker-username=oauthtoken
+          --docker-password={{ ngc_api_key | quote }}
+          --namespace={{ nvidia_ai_namespace | quote }}
+          --dry-run=client -o yaml | kubectl apply -f -
+      register: secret_result
+      changed_when: "'created' in secret_result.stdout or 'configured' in secret_result.stdout"
+      no_log: true
+      run_once: true
+
+    - name: Write Riva values file
+      ansible.builtin.copy:
+        dest: "{{ overrides_file }}"
+        mode: "0600"
+        content: |
+          imagePullSecrets:
+            - name: {{ ngc_pull_secret_name }}
+          ngcCredentials:
+            password: {{ ngc_api_key }}
+          service:
+            type: ClusterIP
+          ingress:
+            enabled: true
+            className: nginx
+            host: {{ riva_ingress_host }}
+          riva:
+            speechServices:
+              asr: {{ riva_asr_enabled | lower }}
+              tts: {{ riva_tts_enabled | lower }}
+              nlp: {{ riva_nlp_enabled | lower }}
+            models:
+          {% for model in riva_models %}
+              - {{ model }}
+          {% endfor %}
+          resources:
+            limits:
+              nvidia.com/gpu: {{ riva_gpu_count }}
+          runtimeClassName: {{ riva_runtimeclassname }}
+          persistence:
+            enabled: true
+            size: {{ riva_model_pvc_size }}
+            storageClass: {{ storage_class_name }}
+      no_log: true
+      run_once: true
+
+    - name: Deploy Riva
+      ansible.builtin.command:
+        cmd: >
+          helm upgrade --install riva nvidia/riva-api
+          --namespace {{ nvidia_ai_namespace | quote }}
+          -f {{ overrides_file }}
+          {% if riva_version | length > 0 %}--version {{ riva_version | quote }}{% endif %}
+      register: riva_result
+      changed_when: "'has been upgraded' in riva_result.stdout or 'has been deployed' in riva_result.stdout"
+      run_once: true
+
+    - name: Wait for Riva rollout
+      ansible.builtin.command:
+        cmd: kubectl -n {{ nvidia_ai_namespace }} rollout status deploy/riva-api --timeout=600s
+      changed_when: false
+      run_once: true
+
+    - name: Show Riva deployment info
+      ansible.builtin.debug:
+        msg:
+          - "NVIDIA Riva is ready."
+          - "URL: https://{{ riva_ingress_host }}"
+          - "To verify: kubectl get pods -n {{ nvidia_ai_namespace }}"
+      run_once: true

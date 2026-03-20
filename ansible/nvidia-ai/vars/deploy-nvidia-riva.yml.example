@@ -1,0 +1,28 @@
+---
+# NVIDIA Riva speech AI deployment vars.
+# Note: ngc_api_key, nvidia_ai_namespace, ngc_pull_secret_name, storage_class_name
+# are defined in vars/nvidia-global.yml
+
+# Riva chart version. Leave empty for latest.
+riva_version: ""
+
+# Riva ingress hostname
+riva_ingress_host: "riva.example.com"
+
+# Speech services to enable
+riva_asr_enabled: true    # Automatic Speech Recognition
+riva_tts_enabled: true    # Text-to-Speech
+riva_nlp_enabled: false   # Natural Language Processing
+
+# Language models to load (space-separated NGC model paths)
+riva_models:
+  - "models/asr/citrinet_1024_gamma_0_25/versions/1/files/citrinet-1024-gamma-0-25.rmir"
+
+# Persistent volume size for model cache
+riva_model_pvc_size: "50Gi"
+
+# GPU resource count
+riva_gpu_count: 1
+
+# RuntimeClass for GPU workloads
+riva_runtimeclassname: "nvidia"

@@ -1,0 +1,22 @@
+---
+# Global variables shared across NVIDIA AI plays.
+# Copy to nvidia-global.yml and edit before running any nvidia-ai playbooks.
+#
+#   cp vars/nvidia-global.yml.example vars/nvidia-global.yml
+
+# NGC API key — used for Helm registry login and image pull secret
+ngc_api_key: ""
+
+# Kubernetes namespace for NVIDIA AI workloads
+nvidia_ai_namespace: "nvidia-ai"
+
+# Name of the image pull secret for NGC registry
+ngc_pull_secret_name: "ngc-secret"
+
+# StorageClass to use for persistent volumes.
+# longhorn-nvidia targets only the NVMe disks (nvme2n1/nvme3n1) tagged 'nvme'.
+# Run ansible/longhorn/configure-longhorn-disks.yml first to create it.
+storage_class_name: "longhorn-nvidia"
+
+# NGC Helm registry
+ngc_helm_registry: "https://helm.ngc.nvidia.com/nvidia"

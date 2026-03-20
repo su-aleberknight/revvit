@@ -1,0 +1,137 @@
+---
+# Deploys NVIDIA Triton Inference Server.
+#
+# Usage:
+#   ansible-playbook deploy-nvidia-triton.yml -i ../../inventory
+#
+# Required vars files:
+#   cp vars/nvidia-global.yml.example vars/nvidia-global.yml
+#   cp vars/deploy-nvidia-triton.yml.example vars/deploy-nvidia-triton.yml
+#   # then edit both files
+
+- name: Deploy NVIDIA Triton Inference Server
+  hosts: rke2_bootstrap
+  become: true
+  vars_files:
+    - vars/nvidia-global.yml
+    - vars/deploy-nvidia-triton.yml
+  vars:
+    overrides_file: /tmp/nvidia-triton-overrides.yaml
+  environment:
+    KUBECONFIG: /etc/rancher/rke2/rke2.yaml
+    PATH: "/var/lib/rancher/rke2/bin:{{ ansible_env.PATH }}"
+
+  pre_tasks:
+    - name: Validate required variables
+      ansible.builtin.fail:
+        msg: |
+          ERROR: Missing required variables.
+
+          Required vars files:
+            cp vars/nvidia-global.yml.example vars/nvidia-global.yml
+            cp vars/deploy-nvidia-triton.yml.example vars/deploy-nvidia-triton.yml
+            # then edit both files
+
+          Required variables:
+            ngc_api_key: "<your-ngc-api-key>"
+            triton_ingress_host: "triton.yourdomain.com"
+      when: >
+        ngc_api_key is not defined or ngc_api_key | length == 0 or
+        triton_ingress_host is not defined or triton_ingress_host == 'triton.example.com'
+      no_log: true
+
+  tasks:
+    - name: Add NGC Helm repo
+      ansible.builtin.command:
+        cmd: helm repo add nvidia {{ ngc_helm_registry }} --force-update
+      changed_when: false
+      run_once: true
+
+    - name: Update Helm repos
+      ansible.builtin.command:
+        cmd: helm repo update
+      changed_when: false
+      run_once: true
+
+    - name: Create namespace
+      ansible.builtin.command:
+        cmd: kubectl create namespace {{ nvidia_ai_namespace | quote }}
+      register: ns_result
+      failed_when: ns_result.rc != 0 and 'already exists' not in ns_result.stderr
+      changed_when: ns_result.rc == 0
+      run_once: true
+
+    - name: Create NGC image pull secret
+      ansible.builtin.shell:
+        cmd: >
+          kubectl create secret docker-registry {{ ngc_pull_secret_name | quote }}
+          --docker-server=nvcr.io
+          --docker-username=oauthtoken
+          --docker-password={{ ngc_api_key | quote }}
+          --namespace={{ nvidia_ai_namespace | quote }}
+          --dry-run=client -o yaml | kubectl apply -f -
+      register: secret_result
+      changed_when: "'created' in secret_result.stdout or 'configured' in secret_result.stdout"
+      no_log: true
+      run_once: true
+
+    - name: Write Triton values file
+      ansible.builtin.copy:
+        dest: "{{ overrides_file }}"
+        mode: "0600"
+        content: |
+          image:
+            repository: nvcr.io/nvidia/tritonserver
+            tag: {{ triton_image_tag }}
+            pullSecrets:
+              - {{ ngc_pull_secret_name }}
+          replicaCount: {{ triton_replicas }}
+          resources:
+            limits:
+              nvidia.com/gpu: {{ triton_gpu_count }}
+          runtimeClassName: {{ triton_runtimeclassname }}
+          ingress:
+            enabled: true
+            className: nginx
+            host: {{ triton_ingress_host }}
+          modelRepository:
+            path: {{ triton_model_repository }}
+          {% if triton_model_pvc_size | length > 0 %}
+          persistence:
+            enabled: true
+            size: {{ triton_model_pvc_size }}
+            storageClass: {{ storage_class_name }}
+            mountPath: /models
+          {% endif %}
+          backends:
+            onnxruntime: {{ triton_backend_onnxruntime | lower }}
+            tensorrt: {{ triton_backend_tensorrt | lower }}
+            pytorch: {{ triton_backend_pytorch | lower }}
+            tensorflow: {{ triton_backend_tensorflow | lower }}
+      run_once: true
+
+    - name: Deploy Triton Inference Server
+      ansible.builtin.command:
+        cmd: >
+          helm upgrade --install triton nvidia/triton-inference-server
+          --namespace {{ nvidia_ai_namespace | quote }}
+          -f {{ overrides_file }}
+          {% if triton_version | length > 0 %}--version {{ triton_version | quote }}{% endif %}
+      register: triton_result
+      changed_when: "'has been upgraded' in triton_result.stdout or 'has been deployed' in triton_result.stdout"
+      run_once: true
+
+    - name: Wait for Triton rollout
+      ansible.builtin.command:
+        cmd: kubectl -n {{ nvidia_ai_namespace }} rollout status deploy/triton --timeout=300s
+      changed_when: false
+      run_once: true
+
+    - name: Show Triton deployment info
+      ansible.builtin.debug:
+        msg:
+          - "NVIDIA Triton Inference Server is ready."
+          - "URL: https://{{ triton_ingress_host }}"
+          - "HTTP: 8000  gRPC: 8001  Metrics: 8002"
+          - "To verify: kubectl get pods -n {{ nvidia_ai_namespace }}"
+      run_once: true

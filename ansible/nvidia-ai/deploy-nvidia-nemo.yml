@@ -1,0 +1,144 @@
+---
+# Deploys NVIDIA NeMo microservices (fine-tuning, datastore, evaluator).
+#
+# Usage:
+#   ansible-playbook deploy-nvidia-nemo.yml -i ../../inventory
+#
+# Required vars files:
+#   cp vars/nvidia-global.yml.example vars/nvidia-global.yml
+#   cp vars/deploy-nvidia-nemo.yml.example vars/deploy-nvidia-nemo.yml
+#   # then edit both files
+
+- name: Deploy NVIDIA NeMo microservices
+  hosts: rke2_bootstrap
+  become: true
+  vars_files:
+    - vars/nvidia-global.yml
+    - vars/deploy-nvidia-nemo.yml
+  vars:
+    overrides_file: /tmp/nvidia-nemo-overrides.yaml
+  environment:
+    KUBECONFIG: /etc/rancher/rke2/rke2.yaml
+    PATH: "/var/lib/rancher/rke2/bin:{{ ansible_env.PATH }}"
+
+  pre_tasks:
+    - name: Validate required variables
+      ansible.builtin.fail:
+        msg: |
+          ERROR: Missing required variables.
+
+          Required vars files:
+            cp vars/nvidia-global.yml.example vars/nvidia-global.yml
+            cp vars/deploy-nvidia-nemo.yml.example vars/deploy-nvidia-nemo.yml
+            # then edit both files
+
+          Required variables:
+            ngc_api_key: "<your-ngc-api-key>"
+      when: ngc_api_key is not defined or ngc_api_key | length == 0
+      no_log: true
+
+  tasks:
+    - name: Add NGC Helm repo
+      ansible.builtin.command:
+        cmd: helm repo add nvidia {{ ngc_helm_registry }} --force-update
+      changed_when: false
+      run_once: true
+
+    - name: Update Helm repos
+      ansible.builtin.command:
+        cmd: helm repo update
+      changed_when: false
+      run_once: true
+
+    - name: Create namespace
+      ansible.builtin.command:
+        cmd: kubectl create namespace {{ nvidia_ai_namespace | quote }}
+      register: ns_result
+      failed_when: ns_result.rc != 0 and 'already exists' not in ns_result.stderr
+      changed_when: ns_result.rc == 0
+      run_once: true
+
+    - name: Create NGC image pull secret
+      ansible.builtin.shell:
+        cmd: >
+          kubectl create secret docker-registry {{ ngc_pull_secret_name | quote }}
+          --docker-server=nvcr.io
+          --docker-username=oauthtoken
+          --docker-password={{ ngc_api_key | quote }}
+          --namespace={{ nvidia_ai_namespace | quote }}
+          --dry-run=client -o yaml | kubectl apply -f -
+      register: secret_result
+      changed_when: "'created' in secret_result.stdout or 'configured' in secret_result.stdout"
+      no_log: true
+      run_once: true
+
+    - name: Create NVAIE license secret
+      ansible.builtin.shell:
+        cmd: >
+          kubectl create secret generic nvaie-secret
+          --from-literal=NGC_API_KEY={{ ngc_api_key | quote }}
+          --namespace={{ nvidia_ai_namespace | quote }}
+          --dry-run=client -o yaml | kubectl apply -f -
+      register: nvaie_secret_result
+      changed_when: "'created' in nvaie_secret_result.stdout or 'configured' in nvaie_secret_result.stdout"
+      no_log: true
+      run_once: true
+
+    - name: Write NeMo values file
+      ansible.builtin.copy:
+        dest: "{{ overrides_file }}"
+        mode: "0600"
+        content: |
+          imagePullSecrets:
+            - name: {{ ngc_pull_secret_name }}
+          customizer:
+            enabled: {{ nemo_customizer_enabled | lower }}
+            runtimeClassName: {{ nemo_runtimeclassname }}
+            resources:
+              limits:
+                nvidia.com/gpu: {{ nemo_gpu_count }}
+            persistence:
+              enabled: true
+              size: {{ nemo_customizer_pvc_size }}
+              storageClass: {{ storage_class_name }}
+          datastore:
+            enabled: {{ nemo_datastore_enabled | lower }}
+            persistence:
+              enabled: true
+              size: {{ nemo_datastore_pvc_size }}
+              storageClass: {{ storage_class_name }}
+          evaluator:
+            enabled: {{ nemo_evaluator_enabled | lower }}
+      run_once: true
+
+    - name: Deploy NeMo microservices
+      ansible.builtin.command:
+        cmd: >
+          helm upgrade --install nemo-microservices nvidia/nemo-microservices
+          --namespace {{ nvidia_ai_namespace | quote }}
+          -f {{ overrides_file }}
+          {% if nemo_version | length > 0 %}--version {{ nemo_version | quote }}{% endif %}
+      register: nemo_result
+      changed_when: "'has been upgraded' in nemo_result.stdout or 'has been deployed' in nemo_result.stdout"
+      run_once: true
+
+    - name: Wait for NeMo Datastore rollout
+      ansible.builtin.command:
+        cmd: kubectl -n {{ nvidia_ai_namespace }} rollout status deploy/nemo-microservices-datastore --timeout=300s
+      changed_when: false
+      run_once: true
+      when: nemo_datastore_enabled | bool
+
+    - name: Wait for NeMo Customizer rollout
+      ansible.builtin.command:
+        cmd: kubectl -n {{ nvidia_ai_namespace }} rollout status deploy/nemo-microservices-customizer --timeout=300s
+      changed_when: false
+      run_once: true
+      when: nemo_customizer_enabled | bool
+
+    - name: Show NeMo deployment info
+      ansible.builtin.debug:
+        msg:
+          - "NVIDIA NeMo microservices are ready."
+          - "To verify: kubectl get pods -n {{ nvidia_ai_namespace }}"
+      run_once: true

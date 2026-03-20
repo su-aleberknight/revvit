@@ -1,0 +1,82 @@
+---
+# Preflight check for NVIDIA AI deployer.
+# Ensures vars/nvidia-global.yml exists and that ngc_api_key is populated,
+# prompting for it if empty. Per-component vars files are validated at deploy time.
+#
+# Run from the ansible/nvidia-ai directory:
+#   ansible-playbook nvidia-ai-preflight-check.yml
+#
+# Or it is imported automatically by run-suse-ai-nvidia-deployer.yml.
+
+- name: NVIDIA AI preflight — global vars
+  hosts: localhost
+  gather_facts: false
+  vars:
+    global_vars_example: "{{ playbook_dir }}/vars/nvidia-global.yml.example"
+    global_vars_file: "{{ playbook_dir }}/vars/nvidia-global.yml"
+
+  tasks:
+    - name: Check if vars/nvidia-global.yml exists
+      ansible.builtin.stat:
+        path: "{{ global_vars_file }}"
+      register: global_vars_stat
+
+    - name: Create vars/nvidia-global.yml from example if missing
+      ansible.builtin.copy:
+        src: "{{ global_vars_example }}"
+        dest: "{{ global_vars_file }}"
+        remote_src: true
+        force: false
+      when: not global_vars_stat.stat.exists
+
+    - name: Load global vars
+      ansible.builtin.include_vars:
+        file: "{{ global_vars_file }}"
+
+    - name: Prompt for ngc_api_key if empty
+      ansible.builtin.pause:
+        prompt: "Enter ngc_api_key (NGC API key from https://ngc.nvidia.com/setup/api-key)"
+        echo: false
+      register: prompt_ngc_key
+      when: ngc_api_key is not defined or ngc_api_key | length == 0
+      no_log: true
+
+    - name: Set ngc_api_key fact
+      ansible.builtin.set_fact:
+        ngc_api_key: "{{ prompt_ngc_key.user_input }}"
+      when: prompt_ngc_key is not skipped
+      no_log: true
+
+    - name: Write ngc_api_key to global vars file
+      ansible.builtin.lineinfile:
+        path: "{{ global_vars_file }}"
+        regexp: '^ngc_api_key:'
+        line: 'ngc_api_key: "{{ ngc_api_key }}"'
+      when: prompt_ngc_key is not skipped
+      no_log: true
+
+    - name: Prompt for nvidia_ai_namespace if still default (optional)
+      ansible.builtin.pause:
+        prompt: "Enter nvidia_ai_namespace (press Enter to keep '{{ nvidia_ai_namespace }}')"
+      register: prompt_namespace
+      when: nvidia_ai_namespace is not defined or nvidia_ai_namespace | length == 0
+
+    - name: Write nvidia_ai_namespace to global vars file
+      ansible.builtin.lineinfile:
+        path: "{{ global_vars_file }}"
+        regexp: '^nvidia_ai_namespace:'
+        line: 'nvidia_ai_namespace: "{{ prompt_namespace.user_input }}"'
+      when: prompt_namespace is not skipped and prompt_namespace.user_input | length > 0
+
+    - name: Global vars preflight complete
+      ansible.builtin.debug:
+        msg:
+          - "vars/nvidia-global.yml is populated."
+          - "Per-component vars files are validated at deploy time."
+          - "  Expected files:"
+          - "    nvidia-ai/vars/deploy-nvidia-nim.yml"
+          - "    nvidia-ai/vars/deploy-nvidia-nemo.yml"
+          - "    nvidia-ai/vars/deploy-nvidia-riva.yml"
+          - "    nvidia-ai/vars/deploy-nvidia-triton.yml"
+          - "    nvidia-ai/vars/deploy-nvidia-rapids.yml"
+          - "  Copy from .example and edit ingress hosts before deploying."

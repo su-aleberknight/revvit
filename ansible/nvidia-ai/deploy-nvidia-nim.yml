@@ -1,0 +1,165 @@
+---
+# Deploys the NVIDIA NIM Operator and a NIM LLM inference microservice.
+#
+# Usage:
+#   ansible-playbook deploy-nvidia-nim.yml -i ../../inventory
+#
+# Required vars files:
+#   cp vars/nvidia-global.yml.example vars/nvidia-global.yml
+#   cp vars/deploy-nvidia-nim.yml.example vars/deploy-nvidia-nim.yml
+#   # then edit both files
+
+- name: Deploy NVIDIA NIM
+  hosts: rke2_bootstrap
+  become: true
+  vars_files:
+    - vars/nvidia-global.yml
+    - vars/deploy-nvidia-nim.yml
+  vars:
+    overrides_file: /tmp/nvidia-nim-overrides.yaml
+  environment:
+    KUBECONFIG: /etc/rancher/rke2/rke2.yaml
+    PATH: "/var/lib/rancher/rke2/bin:{{ ansible_env.PATH }}"
+
+  pre_tasks:
+    - name: Validate required variables
+      ansible.builtin.fail:
+        msg: |
+          ERROR: Missing required variables.
+
+          Required vars files:
+            cp vars/nvidia-global.yml.example vars/nvidia-global.yml
+            cp vars/deploy-nvidia-nim.yml.example vars/deploy-nvidia-nim.yml
+            # then edit both files
+
+          Required variables:
+            ngc_api_key: "<your-ngc-api-key>"
+            nim_model: "meta/llama-3.1-8b-instruct"
+      when: >
+        ngc_api_key is not defined or ngc_api_key | length == 0 or
+        nim_model is not defined or nim_model | length == 0
+      no_log: true
+
+  tasks:
+    - name: Log into NGC Helm registry
+      ansible.builtin.command:
+        cmd: >
+          helm registry login nvcr.io
+          -u oauthtoken
+          -p {{ ngc_api_key | quote }}
+      changed_when: false
+      no_log: true
+      run_once: true
+
+    - name: Add NIM Operator Helm repo
+      ansible.builtin.command:
+        cmd: helm repo add nim-operator {{ nim_operator_helm_registry }} --force-update
+      changed_when: false
+      run_once: true
+
+    - name: Update Helm repos
+      ansible.builtin.command:
+        cmd: helm repo update
+      changed_when: false
+      run_once: true
+
+    - name: Create namespace
+      ansible.builtin.command:
+        cmd: kubectl create namespace {{ nvidia_ai_namespace | quote }}
+      register: ns_result
+      failed_when: ns_result.rc != 0 and 'already exists' not in ns_result.stderr
+      changed_when: ns_result.rc == 0
+      run_once: true
+
+    - name: Create NGC image pull secret
+      ansible.builtin.shell:
+        cmd: >
+          kubectl create secret docker-registry {{ ngc_pull_secret_name | quote }}
+          --docker-server=nvcr.io
+          --docker-username=oauthtoken
+          --docker-password={{ ngc_api_key | quote }}
+          --namespace={{ nvidia_ai_namespace | quote }}
+          --dry-run=client -o yaml | kubectl apply -f -
+      register: secret_result
+      changed_when: "'created' in secret_result.stdout or 'configured' in secret_result.stdout"
+      no_log: true
+      run_once: true
+
+    - name: Create NVAIE license secret
+      ansible.builtin.shell:
+        cmd: >
+          kubectl create secret generic nvaie-secret
+          --from-literal=NGC_API_KEY={{ ngc_api_key | quote }}
+          --namespace={{ nvidia_ai_namespace | quote }}
+          --dry-run=client -o yaml | kubectl apply -f -
+      register: nvaie_secret_result
+      changed_when: "'created' in nvaie_secret_result.stdout or 'configured' in nvaie_secret_result.stdout"
+      no_log: true
+      run_once: true
+
+    - name: Deploy NIM Operator
+      ansible.builtin.command:
+        cmd: >
+          helm upgrade --install nim-operator nim-operator/nim-operator
+          --namespace {{ nvidia_ai_namespace | quote }}
+          {% if nim_operator_version | length > 0 %}--version {{ nim_operator_version | quote }}{% endif %}
+      register: nim_operator_result
+      changed_when: "'has been upgraded' in nim_operator_result.stdout or 'has been deployed' in nim_operator_result.stdout"
+      run_once: true
+
+    - name: Wait for NIM Operator rollout
+      ansible.builtin.command:
+        cmd: kubectl -n {{ nvidia_ai_namespace }} rollout status deploy/nim-operator --timeout=300s
+      changed_when: false
+      run_once: true
+
+    - name: Write NIM values file
+      ansible.builtin.copy:
+        dest: "{{ overrides_file }}"
+        mode: "0600"
+        content: |
+          image:
+            pullSecrets:
+              - {{ ngc_pull_secret_name }}
+          model:
+            ngcAPIKey: {{ ngc_api_key }}
+            name: {{ nim_model }}
+          nimCache:
+            nvaie:
+              secretName: nvaie-secret
+          resources:
+            limits:
+              nvidia.com/gpu: {{ nim_gpu_count }}
+          runtimeClassName: {{ nim_runtimeclassname }}
+          persistence:
+            enabled: true
+            size: {{ nim_model_pvc_size }}
+            storageClass: {{ storage_class_name }}
+      no_log: true
+      run_once: true
+
+    - name: Deploy NIM LLM microservice
+      ansible.builtin.command:
+        cmd: >
+          helm upgrade --install nim-llm
+          oci://nvcr.io/nim/{{ nim_model }}
+          --namespace {{ nvidia_ai_namespace | quote }}
+          -f {{ overrides_file }}
+          {% if nim_version | length > 0 %}--version {{ nim_version | quote }}{% endif %}
+      register: nim_result
+      changed_when: "'has been upgraded' in nim_result.stdout or 'has been deployed' in nim_result.stdout"
+      run_once: true
+
+    - name: Wait for NIM LLM rollout
+      ansible.builtin.command:
+        cmd: kubectl -n {{ nvidia_ai_namespace }} rollout status deploy/nim-llm --timeout=600s
+      changed_when: false
+      run_once: true
+
+    - name: Show NIM deployment info
+      ansible.builtin.debug:
+        msg:
+          - "NVIDIA NIM is ready."
+          - "Model: {{ nim_model }}"
+          - "To verify: kubectl get pods -n {{ nvidia_ai_namespace }}"
+      run_once: true

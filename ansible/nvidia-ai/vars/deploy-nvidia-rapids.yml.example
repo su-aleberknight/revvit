@@ -1,0 +1,28 @@
+---
+# NVIDIA RAPIDS deployment vars.
+# Note: ngc_api_key, nvidia_ai_namespace, ngc_pull_secret_name, storage_class_name
+# are defined in vars/nvidia-global.yml
+
+# RAPIDS chart version. Leave empty for latest.
+rapids_version: ""
+
+# RAPIDS ingress hostname for notebooks
+rapids_ingress_host: "rapids.example.com"
+
+# RAPIDS container image tag (from nvcr.io/nvidia/rapidsai/notebooks)
+rapids_image_tag: "25.02-cuda12.8-py3.12"
+
+# Enable JupyterLab notebook interface
+rapids_jupyter_enabled: true
+
+# Persistent volume size for notebooks and data
+rapids_pvc_size: "50Gi"
+
+# GPU resource count
+rapids_gpu_count: 1
+
+# RuntimeClass for GPU workloads
+rapids_runtimeclassname: "nvidia"
+
+# Replica count
+rapids_replicas: 1

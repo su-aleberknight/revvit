@@ -1,0 +1,34 @@
+---
+# Orchestrates deployment of NVIDIA AI Helm charts.
+# Each component can be run independently or toggled via its vars file.
+#
+# Components:
+#   - NIM     : LLM inference microservices (nvidia-ai/deploy-nvidia-nim.yml)
+#   - NeMo    : Fine-tuning and customization (nvidia-ai/deploy-nvidia-nemo.yml)
+#   - Riva    : Speech AI - ASR/TTS (nvidia-ai/deploy-nvidia-riva.yml)
+#   - Triton  : Model serving (nvidia-ai/deploy-nvidia-triton.yml)
+#   - RAPIDS  : GPU-accelerated data science (nvidia-ai/deploy-nvidia-rapids.yml)
+#
+# Secrets required:
+#   ngc_api_key — NGC API key (prompted interactively if not set in vars/nvidia-global.yml)
+#
+# Vars files (copy from .example and edit before running):
+#   nvidia-ai/vars/nvidia-global.yml
+#   nvidia-ai/vars/deploy-nvidia-nim.yml
+#   nvidia-ai/vars/deploy-nvidia-nemo.yml
+#   nvidia-ai/vars/deploy-nvidia-riva.yml
+#   nvidia-ai/vars/deploy-nvidia-triton.yml
+#   nvidia-ai/vars/deploy-nvidia-rapids.yml
+#
+# To deploy individual components run them directly, e.g.:
+#   ansible-playbook nvidia-ai/deploy-nvidia-nim.yml -i inventory
+#
+# Usage:
+#   ansible-playbook run-suse-ai-nvidia-deployer.yml -i inventory
+
+- import_playbook: nvidia-ai/nvidia-ai-preflight-check.yml
+- import_playbook: nvidia-ai/deploy-nvidia-nim.yml
+- import_playbook: nvidia-ai/deploy-nvidia-nemo.yml
+- import_playbook: nvidia-ai/deploy-nvidia-riva.yml
+- import_playbook: nvidia-ai/deploy-nvidia-triton.yml
+- import_playbook: nvidia-ai/deploy-nvidia-rapids.yml

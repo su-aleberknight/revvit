@@ -1,0 +1,26 @@
+---
+# NeMo microservices deployment vars.
+# Note: ngc_api_key, nvidia_ai_namespace, ngc_pull_secret_name, storage_class_name
+# are defined in vars/nvidia-global.yml
+
+# NeMo microservices chart version. Leave empty for latest.
+nemo_version: ""
+
+# Enable NeMo Customizer (fine-tuning service)
+nemo_customizer_enabled: true
+
+# Enable NeMo Datastore (dataset/model artifact management)
+nemo_datastore_enabled: true
+
+# Enable NeMo Evaluator
+nemo_evaluator_enabled: false
+
+# Persistent volume sizes
+nemo_datastore_pvc_size: "50Gi"
+nemo_customizer_pvc_size: "50Gi"
+
+# GPU resource count for training jobs
+nemo_gpu_count: 1
+
+# RuntimeClass for GPU workloads
+nemo_runtimeclassname: "nvidia"
