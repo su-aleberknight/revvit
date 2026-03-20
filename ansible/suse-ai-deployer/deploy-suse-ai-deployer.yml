@@ -13,6 +13,7 @@
   hosts: rke2_bootstrap
   become: true
   vars_files:
+    - "{{ playbook_dir | dirname }}/global-suse-ai-vars.yaml"
     - vars/deploy-suse-ai-deployer.yml
   vars:
     overrides_file: /tmp/suse_ai_deployer_custom_overrides.yaml
