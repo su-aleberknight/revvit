@@ -45,7 +45,7 @@
       ansible.builtin.command:
         cmd: >
           helm registry login nvcr.io
-          -u oauthtoken
+          -u $oauthtoken
           -p {{ ngc_api_key | quote }}
       changed_when: false
       no_log: false
@@ -76,7 +76,7 @@
         cmd: >
           kubectl create secret docker-registry {{ ngc_pull_secret_name | quote }}
           --docker-server=nvcr.io
-          --docker-username=oauthtoken
+          --docker-username=$oauthtoken
           --docker-password={{ ngc_api_key | quote }}
           --namespace={{ nvidia_ai_namespace | quote }}
           --dry-run=client -o yaml | kubectl apply -f -
