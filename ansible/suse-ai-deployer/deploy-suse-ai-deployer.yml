@@ -58,6 +58,28 @@
       no_log: true
       run_once: true
 
+    - name: Create suse-private-ai namespace
+      ansible.builtin.command:
+        cmd: kubectl create namespace {{ suse_ai_namespace | quote }}
+      register: ns_result
+      failed_when: ns_result.rc != 0 and 'already exists' not in ns_result.stderr
+      changed_when: ns_result.rc == 0
+      run_once: true
+
+    - name: Create Application Collection image pull secret
+      ansible.builtin.shell:
+        cmd: >
+          kubectl create secret docker-registry {{ image_pull_secret_name | quote }}
+          --docker-server=dp.apps.rancher.io
+          --docker-username={{ app_collection_username | quote }}
+          --docker-password={{ app_collection_password | quote }}
+          --namespace={{ suse_ai_namespace | quote }}
+          --dry-run=client -o yaml | kubectl apply -f -
+      register: secret_result
+      changed_when: "'created' in secret_result.stdout or 'configured' in secret_result.stdout"
+      no_log: true
+      run_once: true
+
     - name: Write custom overrides file
       ansible.builtin.copy:
         dest: "{{ overrides_file }}"
