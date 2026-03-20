@@ -52,7 +52,7 @@
       when: >
         ngc_api_key is not defined or ngc_api_key | length == 0 or
         nim_model is not defined or nim_model | length == 0
-      no_log: true
+      no_log: false
 
   tasks:
     - name: Log into NGC Helm registry
