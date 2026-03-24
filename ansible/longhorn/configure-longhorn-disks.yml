@@ -143,6 +143,11 @@
     PATH: "/var/lib/rancher/rke2/bin:{{ ansible_env.PATH }}"
 
   tasks:
+    - name: Delete existing longhorn-nvidia StorageClass if present
+      ansible.builtin.command:
+        cmd: kubectl delete storageclass longhorn-nvidia --ignore-not-found
+      changed_when: false
+
     - name: Apply longhorn-nvidia StorageClass
       ansible.builtin.shell:
         cmd: kubectl apply -f -
