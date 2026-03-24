@@ -158,7 +158,7 @@
           reclaimPolicy: Delete
           volumeBindingMode: Immediate
           parameters:
-            numberOfReplicas: "3"
+            numberOfReplicas: "1"
             staleReplicaTimeout: "2880"
             fromBackup: ""
             fsType: "xfs"
