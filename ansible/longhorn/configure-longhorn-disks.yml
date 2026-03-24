@@ -30,6 +30,12 @@
     longhorn_disk_tag: nvme
 
   tasks:
+    - name: Kill PackageKit to release zypper lock
+      ansible.builtin.command:
+        cmd: systemctl stop packagekit
+      failed_when: false
+      changed_when: false
+
     - name: Install xfsprogs
       ansible.builtin.command:
         cmd: zypper install -y --auto-agree-with-licenses xfsprogs
