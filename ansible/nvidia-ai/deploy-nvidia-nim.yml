@@ -160,6 +160,16 @@
       changed_when: false
       run_once: true
 
+    - name: Save nim_version to vars file
+      ansible.builtin.lineinfile:
+        path: "{{ playbook_dir }}/vars/deploy-nvidia-nim.yml"
+        regexp: '^nim_version:'
+        line: 'nim_version: "{{ nim_version }}"'
+      delegate_to: localhost
+      become: false
+      run_once: true
+      when: prompt_nim_version is not skipped
+
     - name: Show NIM deployment info
       ansible.builtin.debug:
         msg:

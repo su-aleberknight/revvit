@@ -28,6 +28,7 @@
 
 - import_playbook: nvidia-ai/nvidia-ai-preflight-check.yml
 - import_playbook: nvidia-ai/deploy-nvidia-nim.yml
+- import_playbook: nvidia-ai/deploy-nvidia-nim-operator.yml
 - import_playbook: nvidia-ai/deploy-nvidia-nemo.yml
 - import_playbook: nvidia-ai/deploy-nvidia-riva.yml
 - import_playbook: nvidia-ai/deploy-nvidia-triton.yml
