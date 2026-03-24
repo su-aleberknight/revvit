@@ -19,16 +19,6 @@
 - name: Configure NVMe disks for Longhorn
   hosts: rke2-storage-nodes
   become: true
-  vars:
-    longhorn_extra_disks:
-      - device: /dev/nvme2n1
-        mount: /var/lib/longhorn/nvme2n1
-        name: nvme2n1
-      - device: /dev/nvme3n1
-        mount: /var/lib/longhorn/nvme3n1
-        name: nvme3n1
-    longhorn_disk_tag: nvme
-
   tasks:
     - name: Kill PackageKit to release zypper lock
       ansible.builtin.command:
