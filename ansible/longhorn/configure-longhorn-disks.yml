@@ -92,10 +92,11 @@
       ansible.builtin.copy:
         dest: /tmp/longhorn-disk-config.json
         mode: "0600"
-        content: |
+        content: >-
           [
-            {"name":"{{ longhorn_extra_disks[0].name }}","path":"{{ longhorn_extra_disks[0].mount }}","allowScheduling":true,"tags":["{{ longhorn_disk_tag }}"]},
-            {"name":"{{ longhorn_extra_disks[1].name }}","path":"{{ longhorn_extra_disks[1].mount }}","allowScheduling":true,"tags":["{{ longhorn_disk_tag }}"]}
+          {% for disk in longhorn_extra_disks %}
+            {"name":"{{ disk.name }}","path":"{{ disk.mount }}","allowScheduling":true,"tags":["{{ longhorn_disk_tag }}"]}{{ '' if loop.last else ',' }}
+          {% endfor %}
           ]
 
     - name: Annotate nodes with tagged disk config
@@ -131,8 +132,7 @@
       ansible.builtin.debug:
         msg:
           - "NVMe disks configured on {{ inventory_hostname_short }} with tag '{{ longhorn_disk_tag }}':"
-          - "  {{ longhorn_extra_disks[0].device }} -> {{ longhorn_extra_disks[0].mount }}"
-          - "  {{ longhorn_extra_disks[1].device }} -> {{ longhorn_extra_disks[1].mount }}"
+          - "{{ longhorn_extra_disks | map(attribute='device') | zip(longhorn_extra_disks | map(attribute='mount')) | map('join', ' -> ') | list }}"
 
 - name: Create longhorn-nvidia StorageClass
   hosts: rke2_bootstrap

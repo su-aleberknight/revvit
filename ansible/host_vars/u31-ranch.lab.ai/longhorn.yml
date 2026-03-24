@@ -1,0 +1,8 @@
+---
+longhorn_extra_disks:
+  - device: /dev/nvme1n1
+    mount: /var/lib/longhorn/nvme1n1
+    name: nvme1n1
+  - device: /dev/nvme2n1
+    mount: /var/lib/longhorn/nvme2n1
+    name: nvme2n1
