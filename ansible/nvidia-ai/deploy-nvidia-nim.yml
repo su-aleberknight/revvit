@@ -126,7 +126,7 @@
 
     - name: Wait for NIM LLM rollout
       ansible.builtin.command:
-        cmd: kubectl -n {{ nvidia_ai_namespace }} rollout status deploy/nim-llm --timeout=600s
+        cmd: kubectl -n {{ nvidia_ai_namespace }} rollout status statefulset/nim-llm --timeout=600s
       changed_when: false
       run_once: true
 
