@@ -57,25 +57,15 @@
       no_log: true
 
   tasks:
-    - name: Log into NGC Helm registry
+    - name: Add NVIDIA NIM Helm repo
       ansible.builtin.command:
         cmd: >
-          helm registry login nvcr.io
-          -u $oauthtoken
-          -p {{ ngc_api_key | quote }}
-      changed_when: false
-      no_log: true
-      run_once: true
-
-    - name: Add NGC Helm repo
-      ansible.builtin.command:
-        cmd: >
-          helm repo add nvidia {{ ngc_helm_registry }}
-          --username $oauthtoken
-          --password {{ ngc_api_key | quote }}
+          helm repo add nvidia-nim https://helm.ngc.nvidia.com/nim
+          --username='$oauthtoken'
+          --password={{ ngc_api_key | quote }}
           --force-update
       changed_when: false
-      no_log: false
+      no_log: true
       run_once: true
 
     - name: Update Helm repos
@@ -134,10 +124,10 @@
     - name: Deploy NIM LLM microservice
       ansible.builtin.command:
         cmd: >
-          helm upgrade --install nim-llm
-          oci://nvcr.io/nim/{{ nim_model }}
+          helm upgrade --install nim-llm nvidia-nim/nim-llm
           --namespace {{ nvidia_ai_namespace | quote }}
           -f {{ overrides_file }}
+          {{ ('--version ' ~ nim_version) if nim_version | length > 0 else '' }}
       register: nim_result
       changed_when: "'has been upgraded' in nim_result.stdout or 'has been deployed' in nim_result.stdout"
       run_once: true
