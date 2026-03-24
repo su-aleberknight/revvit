@@ -38,6 +38,17 @@
       when: prompt_ngc_key is not skipped
       no_log: true
 
+    - name: Prompt for nim_version if empty
+      ansible.builtin.pause:
+        prompt: "Enter nim_version (e.g. 1.8.0 — see https://catalog.ngc.nvidia.com/orgs/nim/teams/meta/containers/llama-3.1-8b-instruct)"
+      register: prompt_nim_version
+      when: nim_version is not defined or nim_version | length == 0
+
+    - name: Set nim_version from prompt
+      ansible.builtin.set_fact:
+        nim_version: "{{ prompt_nim_version.user_input }}"
+      when: prompt_nim_version is not skipped
+
     - name: Validate required variables
       ansible.builtin.fail:
         msg: |
