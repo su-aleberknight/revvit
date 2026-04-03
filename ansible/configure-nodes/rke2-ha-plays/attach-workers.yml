@@ -3,17 +3,17 @@
 # Reads the cluster token from the leader node, deploys the RKE2 config,
 # and starts the rke2-agent service.
 #
-# Run install-rke2-on-worker-nodes.yml first.
+# Run install-rke2-on-agent-nodes.yml first.
 #
 # Inventory groups required:
 #   [rke2_bootstrap]    - leader node (token source)
-#   [rke2-worker-nodes] - worker nodes to attach
+#   [rke2-agent-nodes] - worker nodes to attach
 
 - name: Validate variables
-  hosts: rke2-worker-nodes
+  hosts: rke2-agent-nodes
   gather_facts: false
   vars_files:
-    - vars/install-rke2-worker-nodes.yml
+    - vars/install-rke2-agent-nodes.yml
 
   tasks:
     - name: Validate required variables are defined
@@ -21,8 +21,8 @@
         msg: |
           ERROR: Missing required variables.
 
-          Required vars file (vars/install-rke2-worker-nodes.yml):
-            cp vars/install-rke2-worker-nodes.yml.example vars/install-rke2-worker-nodes.yml
+          Required vars file (vars/install-rke2-agent-nodes.yml):
+            cp vars/install-rke2-agent-nodes.yml.example vars/install-rke2-agent-nodes.yml
 
           File contents:
             rke2_version: "v1.34.3+rke2r3"
@@ -45,10 +45,10 @@
         rke2_cluster_token: "{{ rke2_token_file.content | b64decode | trim }}"
 
 - name: Attach worker nodes to cluster
-  hosts: rke2-worker-nodes
+  hosts: rke2-agent-nodes
   become: true
   vars_files:
-    - vars/install-rke2-worker-nodes.yml
+    - vars/install-rke2-agent-nodes.yml
   vars:
     rke2_token: "{{ hostvars[groups['rke2_bootstrap'][0]]['rke2_cluster_token'] }}"
     rke2_vip_ip: "{{ hostvars[groups['vip'][0]]['ansible_host'] }}"
@@ -56,7 +56,7 @@
   tasks:
     - name: Skip if no worker nodes defined in inventory
       ansible.builtin.meta: end_play
-      when: groups['rke2-worker-nodes'] | default([]) | length == 0
+      when: groups['rke2-agent-nodes'] | default([]) | length == 0
 
     - name: Create RKE2 config directory
       ansible.builtin.file:

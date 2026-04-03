@@ -13,6 +13,6 @@ server: https://{{ bootstrap_ip }}:9345
 
 tls-san:
   - {{ rke2_vip_ip }}
-{% for host in groups['rke2-control-nodes'] | unique %}
+{% for host in groups['rke2-server-nodes'] | unique %}
   - {{ hostvars[host]['ansible_host'] }}
 {% endfor %}

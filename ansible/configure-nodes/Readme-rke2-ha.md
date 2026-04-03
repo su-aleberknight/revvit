@@ -16,7 +16,7 @@ cp rke2-ha-plays/vars/configure-etc-hosts.yml.example rke2-ha-plays/vars/configu
 cp rke2-ha-plays/vars/install-kubevip-static-pod.yml.example rke2-ha-plays/vars/install-kubevip-static-pod.yml
 cp rke2-ha-plays/vars/install-rke2-on-leader.yml.example rke2-ha-plays/vars/install-rke2-on-leader.yml
 cp rke2-ha-plays/vars/create-control-plane.yml.example rke2-ha-plays/vars/create-control-plane.yml
-cp rke2-ha-plays/vars/install-rke2-on-worker-nodes.yml.example rke2-ha-plays/vars/install-rke2-on-worker-nodes.yml
+cp rke2-ha-plays/vars/install-rke2-on-agent-nodes.yml.example rke2-ha-plays/vars/install-rke2-on-agent-nodes.yml
 ```
 
 ## Running the Full Installation
@@ -75,7 +75,7 @@ ansible-playbook -i inventory rke2-ha-plays/configure-etc-hosts.yml
 ---
 
 ### 3. `rke2-ha-plays/install-kubevip-static-pod.yml`
-**Hosts:** `rke2_bootstrap` + `rke2-control-nodes`
+**Hosts:** `rke2_bootstrap` + `rke2-server-nodes`
 
 Deploys the kube-vip static pod manifest to all server nodes **before** RKE2 starts.
 kube-vip provides the virtual IP (VIP) that acts as the HA load balancer for the
@@ -125,7 +125,7 @@ ansible-playbook -i inventory rke2-ha-plays/install-rke2-on-leader.yml
 ---
 
 ### 5. `rke2-ha-plays/create-control-plane.yml`
-**Hosts:** `rke2-control-nodes` (node2 and node3)
+**Hosts:** `rke2-server-nodes` (node2 and node3)
 
 Joins node2 and node3 to the cluster as full server nodes. They connect to the
 bootstrap node's real IP on port 9345 — not the VIP — because kube-vip on those
@@ -155,14 +155,14 @@ ansible-playbook -i inventory rke2-ha-plays/create-control-plane.yml
 
 ---
 
-### 6. `rke2-ha-plays/install-rke2-on-worker-nodes.yml`
-**Hosts:** `rke2-worker-nodes`
+### 6. `rke2-ha-plays/install-rke2-on-agent-nodes.yml`
+**Hosts:** `rke2-agent-nodes`
 
-Joins any worker nodes defined in the `[rke2-worker-nodes]` inventory group. Worker nodes
+Joins any worker nodes defined in the `[rke2-agent-nodes]` inventory group. Worker nodes
 connect via the VIP so they remain connected even if the bootstrap node goes down.
-Exits cleanly if `rke2-worker-nodes` is empty or not defined.
+Exits cleanly if `rke2-agent-nodes` is empty or not defined.
 
-**Vars file:** `rke2-ha-plays/vars/install-rke2-on-worker-nodes.yml`
+**Vars file:** `rke2-ha-plays/vars/install-rke2-on-agent-nodes.yml`
 
 | Variable | Description |
 |----------|-------------|
@@ -170,7 +170,7 @@ Exits cleanly if `rke2-worker-nodes` is empty or not defined.
 | `rke2_vip_ip` | Virtual IP address agents use to join the cluster |
 
 ```bash
-ansible-playbook -i inventory rke2-ha-plays/install-rke2-on-worker-nodes.yml
+ansible-playbook -i inventory rke2-ha-plays/install-rke2-on-agent-nodes.yml
 ```
 
 ---
@@ -180,8 +180,8 @@ ansible-playbook -i inventory rke2-ha-plays/install-rke2-on-worker-nodes.yml
 | Group | Role |
 |-------|------|
 | `rke2_bootstrap` | Node 1 only — initializes the etcd cluster |
-| `rke2-control-nodes` | All three server nodes including node1 |
-| `rke2-worker-nodes` | Worker nodes (optional) |
+| `rke2-server-nodes` | All three server nodes including node1 |
+| `rke2-agent-nodes` | Worker nodes (optional) |
 
 Example inventory:
 
@@ -189,7 +189,7 @@ Example inventory:
 [rke2_bootstrap]
 node1 ansible_host=192.168.1.201 ansible_user=root
 
-[rke2-control-nodes]
+[rke2-server-nodes]
 node1 ansible_host=192.168.1.201 ansible_user=root
 node2 ansible_host=192.168.1.202 ansible_user=root
 node3 ansible_host=192.168.1.203 ansible_user=root

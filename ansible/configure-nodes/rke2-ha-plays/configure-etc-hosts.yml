@@ -18,7 +18,7 @@
         path: /etc/hosts
         marker: "# {mark} RKE2 CLUSTER"
         block: |
-          {% for host in groups['rke2-control-nodes'] | unique %}
+          {% for host in groups['rke2-server-nodes'] | unique %}
           {{ hostvars[host]['ansible_host'] }}  {{ host }}
           {% endfor %}
           {{ rke2_vip_ip }}  {{ rke2_vip_hostname }}

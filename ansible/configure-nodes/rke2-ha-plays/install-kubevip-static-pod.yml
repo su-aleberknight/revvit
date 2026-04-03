@@ -12,7 +12,7 @@
 #   3. create-control-plane.yml
 
 - name: Validate variables
-  hosts: rke2_bootstrap:rke2-control-nodes
+  hosts: rke2_bootstrap:rke2-server-nodes
   gather_facts: false
   vars_files:
     - vars/install-kubevip-static-pod.yml
@@ -32,7 +32,7 @@
 
           Required inventory groups:
             [rke2_bootstrap]   <- node 1 only
-            [rke2-control-nodes]     <- nodes 2 and 3 only
+            [rke2-server-nodes]     <- nodes 2 and 3 only
 
           File contents:
             kube_vip_version: "v0.8.9"
@@ -41,7 +41,7 @@
         kube_vip_version is not defined or kube_vip_version | length == 0
 
 - name: Deploy kube-vip on all server nodes
-  hosts: rke2_bootstrap:rke2-control-nodes
+  hosts: rke2_bootstrap:rke2-server-nodes
   become: true
   vars_files:
     - vars/install-kubevip-static-pod.yml

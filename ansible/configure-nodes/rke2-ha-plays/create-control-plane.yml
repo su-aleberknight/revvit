@@ -1,13 +1,13 @@
 ---
 # Inventory group required:
-#   [rke2-control-nodes]  - nodes 2 and 3 only
+#   [rke2-server-nodes]  - nodes 2 and 3 only
 #
 # Run install-rke2-on-leader.yml first and wait for it to complete
 # before running this playbook. Secondary servers join via the bootstrap node's
 # real IP — the VIP handles traffic once all three servers are up.
 
 - name: Validate variables
-  hosts: rke2-control-nodes
+  hosts: rke2-server-nodes
   gather_facts: false
   vars_files:
     - vars/create-control-plane.yml
@@ -27,7 +27,7 @@
 
           Required inventory groups:
             [rke2_bootstrap]   <- node 1 only
-            [rke2-control-nodes]     <- nodes 2 and 3 only
+            [rke2-server-nodes]     <- nodes 2 and 3 only
 
           File contents:
             rke2_version: "v1.34.3+rke2r3"
@@ -50,7 +50,7 @@
         rke2_cluster_token: "{{ rke2_token_file.content | b64decode | trim }}"
 
 - name: Attach control plane nodes
-  hosts: rke2-control-nodes
+  hosts: rke2-server-nodes
   become: true
   vars_files:
     - vars/create-control-plane.yml

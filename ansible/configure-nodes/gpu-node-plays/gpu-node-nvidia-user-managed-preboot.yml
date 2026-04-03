@@ -59,3 +59,4 @@
     - name: Reboot to load the NVIDIA kernel module
       ansible.builtin.reboot:
         reboot_timeout: 300
+      when: driver_install.changed or utils_install.changed

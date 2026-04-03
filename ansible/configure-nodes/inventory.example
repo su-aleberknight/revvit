@@ -11,13 +11,13 @@ node1 ansible_host=192.168.1.10 ansible_user=root
 [rke2-leader-node]
 node1 ansible_host=192.168.1.10 ansible_user=root
 
-[rke2-control-nodes]
+[rke2-server-nodes]
 node1 ansible_host=192.168.1.10 ansible_user=root
 node2 ansible_host=192.168.1.11 ansible_user=root
 node3 ansible_host=192.168.1.12 ansible_user=root
 
 # Worker nodes are optional — leave this group empty or remove it if not needed
-[rke2-worker-nodes]
+[rke2-agent-nodes]
 worker1 ansible_host=192.168.1.20 ansible_user=root
 worker2 ansible_host=192.168.1.21 ansible_user=root
 

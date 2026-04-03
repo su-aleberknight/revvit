@@ -4,13 +4,13 @@
 #
 # Prerequisites:
 #   - Cluster is up and the leader node is reachable
-#   - Worker nodes are listed in [rke2-worker-nodes] in the inventory
+#   - Worker nodes are listed in [rke2-agent-nodes] in the inventory
 #
 # Run order:
 #   1. rke2-ha-plays/create-vars-rke2-ha-plays.yml       — create vars files from examples
-#   2. rke2-ha-plays/install-rke2-on-worker-nodes.yml    — install RKE2 binary on worker nodes
+#   2. rke2-ha-plays/install-rke2-on-agent-nodes.yml    — install RKE2 binary on worker nodes
 #   3. rke2-ha-plays/attach-workers.yml                  — configure and join worker nodes to the cluster
 
 - import_playbook: rke2-ha-plays/create-vars-rke2-ha-plays.yml
-- import_playbook: rke2-ha-plays/install-rke2-on-worker-nodes.yml
+- import_playbook: rke2-ha-plays/install-rke2-on-agent-nodes.yml
 - import_playbook: rke2-ha-plays/attach-workers.yml

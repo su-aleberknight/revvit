@@ -3,13 +3,13 @@
 # Does not start the service or join the cluster — run attach-workers.yml after this.
 #
 # Inventory group required:
-#   [rke2-worker-nodes]
+#   [rke2-agent-nodes]
 
 - name: Validate variables
-  hosts: rke2-worker-nodes
+  hosts: rke2-agent-nodes
   gather_facts: false
   vars_files:
-    - vars/install-rke2-worker-nodes.yml
+    - vars/install-rke2-agent-nodes.yml
 
   tasks:
     - name: Validate required variables are defined
@@ -18,14 +18,14 @@
           ERROR: Missing required variables.
 
           Usage:
-            ansible-playbook install-rke2-on-worker-nodes.yml [-i inventory]
+            ansible-playbook install-rke2-on-agent-nodes.yml [-i inventory]
 
-          Required vars file (vars/install-rke2-worker-nodes.yml):
-            cp vars/install-rke2-worker-nodes.yml.example vars/install-rke2-worker-nodes.yml
-            # then edit vars/install-rke2-worker-nodes.yml
+          Required vars file (vars/install-rke2-agent-nodes.yml):
+            cp vars/install-rke2-agent-nodes.yml.example vars/install-rke2-agent-nodes.yml
+            # then edit vars/install-rke2-agent-nodes.yml
 
           Required inventory group:
-            [rke2-worker-nodes]
+            [rke2-agent-nodes]
 
           File contents:
             rke2_version: "v1.34.3+rke2r3"
@@ -33,15 +33,15 @@
       when: rke2_version is not defined or rke2_version | length == 0
 
 - name: Install RKE2 on worker nodes
-  hosts: rke2-worker-nodes
+  hosts: rke2-agent-nodes
   become: true
   vars_files:
-    - vars/install-rke2-worker-nodes.yml
+    - vars/install-rke2-agent-nodes.yml
 
   tasks:
     - name: Skip if no worker nodes defined in inventory
       ansible.builtin.meta: end_play
-      when: groups['rke2-worker-nodes'] | default([]) | length == 0
+      when: groups['rke2-agent-nodes'] | default([]) | length == 0
 
     - name: Install RKE2 worker
       ansible.builtin.shell:

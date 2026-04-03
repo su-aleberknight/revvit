@@ -1,6 +1,6 @@
 ---
 - name: Set vip_interface environment variable on control plane nodes
-  hosts: rke2-control-nodes
+  hosts: rke2-server-nodes
   become: true
 
   tasks:

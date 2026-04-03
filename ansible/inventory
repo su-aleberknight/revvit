@@ -7,12 +7,12 @@ u31-ranch.lab.ai    ansible_host=172.24.131.72  ansible_user=root
 [rancher-manager-node]
 u31-ranch.lab.ai    ansible_host=172.24.131.72  ansible_user=root
 
-[rke2-control-nodes]
+[rke2-server-nodes]
 u31-ranch.lab.ai    ansible_host=172.24.131.72  ansible_user=root
 u28-29-ranch.lab.ai ansible_host=172.24.131.73  ansible_user=root
 u25-26-ranch.lab.ai ansible_host=172.24.131.75  ansible_user=root
 
-[rke2-worker-nodes]
+[rke2-agent-nodes]
 gpu152.lab.ai   ansible_host=172.24.131.122  ansible_user=root
 gpu28.lab.ai    ansible_host=172.24.131.213  ansible_user=root
 

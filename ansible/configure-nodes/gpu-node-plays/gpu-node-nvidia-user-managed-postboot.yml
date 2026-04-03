@@ -48,7 +48,14 @@
       register: ctk_result
       changed_when: ctk_result.rc == 0
 
-    - name: Restart rke2-agent to apply containerd configuration
+    - name: Detect active RKE2 service
+      ansible.builtin.shell:
+        cmd: systemctl is-active rke2-server && echo server || echo agent
+      register: rke2_role
+      changed_when: false
+
+    - name: Restart RKE2 service to apply containerd configuration
       ansible.builtin.systemd:
-        name: rke2-agent
+        name: "rke2-{{ rke2_role.stdout }}"
         state: restarted
+      when: toolkit_install.changed or ctk_result.changed

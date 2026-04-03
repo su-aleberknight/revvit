@@ -1,9 +1,9 @@
 ---
 # Removes RKE2 from all control plane nodes.
-# Run this to fully reset [rke2-control-nodes] before re-running create-control-plane.yml.
+# Run this to fully reset [rke2-server-nodes] before re-running create-control-plane.yml.
 
 - name: Reset control plane nodes
-  hosts: rke2-control-nodes
+  hosts: rke2-server-nodes
   become: true
 
   tasks:

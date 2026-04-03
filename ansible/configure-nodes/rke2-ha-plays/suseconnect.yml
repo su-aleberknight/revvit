@@ -1,6 +1,6 @@
 ---
 - name: Register SLES with SUSEConnect and activate modules
-  hosts: rke2_bootstrap:rke2-control-nodes
+  hosts: rke2_bootstrap:rke2-server-nodes
   become: true
   vars_files:
     - vars/suseconnect.yml
