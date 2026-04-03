@@ -50,7 +50,7 @@
 
     - name: Detect active RKE2 service
       ansible.builtin.shell:
-        cmd: systemctl is-active rke2-server && echo server || echo agent
+        cmd: systemctl is-active rke2-server >/dev/null 2>&1 && echo server || echo agent
       register: rke2_role
       changed_when: false
 
